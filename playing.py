@@ -1,7 +1,7 @@
 from states import *
 import gui
  
-import random
+import random, math
  
 import pygame
 from pygame.constants import *
@@ -31,10 +31,12 @@ class Laser(gui.Paintable, gui.Updateable):
         """The 'bounds' parameter indicates the width and height
         of the playing area"""
         gui.Paintable.__init__(self,loc)
+        self.counterFont = pygame.font.Font(None, 36)
         self.height = height
         self.width = width
         self.angry = False
-        self.clobberinTime = pygame.time.get_ticks() + random.choice((1000,3000))
+        self.counterImage = None
+        self.clobberinTime = pygame.time.get_ticks() + random.randint(10000,20000)
         
     def paint(self,screen):
         if self.angry:
@@ -42,11 +44,20 @@ class Laser(gui.Paintable, gui.Updateable):
             topLeftY = 0
             rect = [topLeftX,topLeftY, self.width, self.height]
             pygame.draw.rect(screen, (255,0,0), rect)
+        if self.counterImage:
+            screen.blit(self.counterImage, self.loc)
 
     def update(self,delay):
-        if pygame.time.get_ticks() >= self.clobberinTime:
-            self.angry = True
+        timeLeft = self.clobberinTime - pygame.time.get_ticks()
         
+        if timeLeft < 0:
+            self.angry = True
+            self.counterImage = self.counterFont.render("ANGRY",0,(255,255,255))
+        elif timeLeft < 3000:
+            self.counterImage = self.counterFont.render(str(timeLeft/1000+1),0,(255,255,255))
+        else:
+            self.counterImage = None
+            
     def collidesWithBall(self,ball):
         if self.angry:
             topLeftX = self.loc[0] - self.width / 2
@@ -66,22 +77,39 @@ class Ball(gui.Paintable, gui.Updateable):
     AXIS_X = 1
     AXIS_Y = 2
     
-    def __init__(self,loc,bounds,radius=16,speed=110,increase=0.1):
+    def __init__(self,loc,bounds,generation=1):
         """The 'bounds' parameter indicates the width and height
         of the playing area"""
         gui.Paintable.__init__(self,loc)
+        self.maxGenerations = 6
+        if generation > self.maxGenerations:
+            generation = self.maxGenerations
+        self.generation = generation
         self.bounds = bounds
-        self.radius = radius
-        self.speed = speed
-        self.increase = increase
-        self.originalSpeed = speed
-        self.dx = self.dy = 0
+        self.radius = 32 / float(generation)
+        self.speed = 50 + 60 * generation
         self.dead = False
         self.loc = list(loc)
-        self.dx = random.choice((-1,1))
-        self.dy = random.choice((-1,1))
+        vel = [random.choice((-1,1,0.1)),random.choice((-1,1,0.1))]
+        vel = [a/math.sqrt(sum([v**2 for v in vel])) for a in vel]
+        self.dx = vel[0]
+        self.dy = vel[1]
+        self.colour = [(255,255,255),
+                       (255,0,255),
+                       (0,255,255),
+                       (255,255,0),
+                       (255,0,0),
+                       (0,0,255)][generation-1]
         self.outOfBounds = 0
-        self.speed = self.originalSpeed
+        self.value = (self.maxGenerations - generation + 1) ** 2
+
+    def length(array):
+        '''Assuming array is nxmx...x2, return an array of the length of
+        each vector.'''
+        return math.sqrt(sum(array**2, -1))
+    
+    def normalize(array):
+        return array/length(array)
 
     def rect(self):
         ballLeftX = self.loc[0] - self.radius
@@ -96,13 +124,13 @@ class Ball(gui.Paintable, gui.Updateable):
         if(axis & self.AXIS_Y):
             self.dy = -self.dy
         
-        self.speed = self.speed + self.speed * self.increase;
+        #self.speed = self.speed + self.speed * self.increase;
         
     def paint(self,screen):
         x = int(self.loc[0])
         y = int(self.loc[1])
-        pygame.draw.circle(screen, (255,255,0), (x,y),self.radius)
-        
+        pygame.draw.circle(screen, self.colour, (x,y),self.radius)
+
     def update(self,delay):
         x,y = self.loc
         radius = self.radius
@@ -127,7 +155,7 @@ class Ball(gui.Paintable, gui.Updateable):
         
 class Paddle(gui.Paintable, gui.Keyable, gui.Updateable):
     
-    def __init__(self,loc,size,maxY,keys=(K_UP, K_DOWN), speed=200):
+    def __init__(self,loc,size,maxY,keys=(K_UP, K_DOWN), speed=300):
         gui.Keyable.__init__(self,keys)
         gui.Paintable.__init__(self,loc)
         self.keys = keys
@@ -251,8 +279,8 @@ class PlayingGameState(GuiState):
             self.laser.collidesWithBall(ball)
 
             if ball.dead:
-                b1 = Ball(ball.loc, (640,480))
-                b2 = Ball(ball.loc, (640,480))
+                b1 = Ball(ball.loc, (640,480), ball.generation+1)
+                b2 = Ball(ball.loc, (640,480), ball.generation+1)
                 self.balls.append(b1)
                 self.balls.append(b2)
                 self.add(b1)
@@ -260,10 +288,10 @@ class PlayingGameState(GuiState):
         
             score = 0
             if(ball.outOfBounds < 0):
-                score = self.score2.getScore() + 1
+                score = self.score2.getScore() + ball.value
                 self.score2.setScore(score)
             elif(ball.outOfBounds > 0):
-                score = self.score1.getScore() + 1
+                score = self.score1.getScore() + ball.value
                 self.score1.setScore(score)
                 
             if(score):

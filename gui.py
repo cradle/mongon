@@ -53,7 +53,6 @@ class Keyable:
     def maskEvent(self, key, unicode, pressed):
         if self.keys:
                 if not (key in self.keys):
-                    print "Not Mine"
                     return
         self.keyEvent(key,unicode,pressed)
         
