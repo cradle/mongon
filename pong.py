@@ -27,14 +27,14 @@ class TitleScreen(states.State):
         white = (255, 255, 255)
         
         w,h = screen.get_size()
-        surface = self.pongFont.render("PyPong!",0, white)
+        surface = self.pongFont.render("Mongon",0, white)
         
         centerX = w/2 - surface.get_width()/2
         centerY = h*0.25 - surface.get_height()/2
         
         screen.blit(surface, (centerX,centerY))
         
-        surface = self.font.render("A tutorial",0,(128,128,128))
+        surface = self.font.render("Balls. Splits. Bullits. Angrys.",0,(128,128,128))
         centerX = w/2 - surface.get_width()/2
         centerY = h/2 - surface.get_height()/2
         
