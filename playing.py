@@ -24,6 +24,42 @@ class Score(gui.Paintable):
     def paint(self,screen):
         if(self.scoreImage and self.loc):
             screen.blit(self.scoreImage, self.loc)
+
+class Laser(gui.Paintable, gui.Updateable):
+    
+    def __init__(self,loc,height=480,width=10):
+        """The 'bounds' parameter indicates the width and height
+        of the playing area"""
+        gui.Paintable.__init__(self,loc)
+        self.height = height
+        self.width = width
+        self.angry = False
+        self.clobberinTime = pygame.time.get_ticks() + random.choice((1000,3000))
+        
+    def paint(self,screen):
+        if self.angry:
+            topLeftX = self.loc[0] - (self.width / 2)
+            topLeftY = 0
+            rect = [topLeftX,topLeftY, self.width, self.height]
+            pygame.draw.rect(screen, (255,0,0), rect)
+
+    def update(self,delay):
+        if pygame.time.get_ticks() >= self.clobberinTime:
+            self.angry = True
+        
+    def collidesWithBall(self,ball):
+        if self.angry:
+            topLeftX = self.loc[0] - self.width / 2
+            topLeftY = 0
+            ourRect = Rect(topLeftX,topLeftY,self.width,self.height)
+
+            if(ourRect.colliderect(ball.rect())):
+                ball.dead = True
+                self.angry = False
+                self.clobberinTime = pygame.time.get_ticks() + random.choice((1000,9000))
+                return True
+            return False
+            
             
 class Ball(gui.Paintable, gui.Updateable):
     
@@ -40,7 +76,19 @@ class Ball(gui.Paintable, gui.Updateable):
         self.increase = increase
         self.originalSpeed = speed
         self.dx = self.dy = 0
-        self.center()
+        self.dead = False
+        self.loc = list(loc)
+        self.dx = random.choice((-1,1))
+        self.dy = random.choice((-1,1))
+        self.outOfBounds = 0
+        self.speed = self.originalSpeed
+
+    def rect(self):
+        ballLeftX = self.loc[0] - self.radius
+        ballLeftY = self.loc[1] - self.radius
+        ballWidth = self.radius * 2
+        ballHeight = self.radius * 2
+        return Rect(ballLeftX,ballLeftY,ballWidth,ballHeight)
         
     def bounce(self, axis):
         if(axis & self.AXIS_X):
@@ -49,13 +97,6 @@ class Ball(gui.Paintable, gui.Updateable):
             self.dy = -self.dy
         
         self.speed = self.speed + self.speed * self.increase;
-            
-    def center(self):
-        self.loc = [self.bounds[0]/2, self.bounds[1]/2]
-        self.dx = random.choice((-1,1))
-        self.dy = random.choice((-1,1))
-        self.outOfBounds = 0
-        self.speed = self.originalSpeed
         
     def paint(self,screen):
         x = int(self.loc[0])
@@ -177,9 +218,11 @@ class PlayingGameState(GuiState):
  
     def __init__(self,driver,screen):
         GuiState.__init__(self,driver,screen)
-        self.ball = Ball(None, (640,480))
-        self.ball.center()
-        self.add(self.ball)
+        self.balls = []
+        self.balls.append(Ball((320,240), (640,480)))
+
+        for ball in self.balls:
+            self.add(ball)
         
         self.player1 = Paddle( (10,0), (15,75), 480,(K_w, K_s) )
         self.player1.center()
@@ -195,24 +238,41 @@ class PlayingGameState(GuiState):
         
         self.score2 = Score((610,5))
         self.add(self.score2)
+
+        self.laser = Laser((320,0))
+        self.add(self.laser)
         
     def update(self,delay):
         GuiState.update(self,delay)
+
+        for ball in self.balls[:]:
+            self.player1.collidesWithBall(ball)
+            self.player2.collidesWithBall(ball)
+            self.laser.collidesWithBall(ball)
+
+            if ball.dead:
+                b1 = Ball(ball.loc, (640,480))
+                b2 = Ball(ball.loc, (640,480))
+                self.balls.append(b1)
+                self.balls.append(b2)
+                self.add(b1)
+                self.add(b2)
         
-        self.player1.collidesWithBall(self.ball)
-        self.player2.collidesWithBall(self.ball)
-        
-        score = 0
-        if(self.ball.outOfBounds < 0):
-            score = self.score2.getScore() + 1
-            self.score2.setScore(score)
-        elif(self.ball.outOfBounds > 0):
-            score = self.score1.getScore() + 1
-            self.score1.setScore(score)
-            
-        if(score):
-            self.ball.center()
-            if(score >= 3):
-                done = GameOver(self._driver,self.screen,
-                                self.score1,self.score2)
-                self._driver.replace(done)
+            score = 0
+            if(ball.outOfBounds < 0):
+                score = self.score2.getScore() + 1
+                self.score2.setScore(score)
+            elif(ball.outOfBounds > 0):
+                score = self.score1.getScore() + 1
+                self.score1.setScore(score)
+                
+            if(score):
+                ball.dead = True
+                if(score >= 50):
+                    done = GameOver(self._driver,self.screen,
+                                    self.score1,self.score2)
+                    self._driver.replace(done)
+
+            if ball.dead:
+                self.remove(ball)
+                self.balls.remove(ball)

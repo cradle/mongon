@@ -117,6 +117,16 @@ class GuiState(State):
             self.keyables.append(item)
         if(isinstance(item,gui.Updateable)):
             self.updateables.append(item)
+
+    def remove(self, item):
+        if item in self.paintables:
+            self.paintables.remove(item)
+        if item in self.mouseables:
+            self.mouseables.remove(item)
+        if item in self.keyables:
+            self.keyables.remove(item)
+        if item in self.updateables:
+            self.updateables.remove(item)
             
     def paint(self,screen):
         for paintable in self.paintables:
