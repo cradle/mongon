@@ -25,6 +25,44 @@ class Score(gui.Paintable):
         if(self.scoreImage and self.loc):
             screen.blit(self.scoreImage, self.loc)
 
+class Bullet(gui.Paintable, gui.Updateable):
+    
+    def __init__(self,loc,direction = 1, height=5,width=10):
+        """The 'bounds' parameter indicates the width and height
+        of the playing area"""
+        gui.Paintable.__init__(self,loc)
+        self.direction = direction
+        self.height = height
+        self.width = width
+        self.dead = False
+        self.dx = 10 * self.direction
+        self.loc = (loc[0] + self.width * self.direction + 5, loc[1])
+        
+    def paint(self,screen):
+        topLeftX = self.loc[0] - (self.width / 2)
+        topLeftY = self.loc[1] - (self.height / 2)
+        rect = [topLeftX,topLeftY, self.width, self.height]
+        pygame.draw.rect(screen, (0,0,255), rect)
+
+    def update(self,delay):
+        self.loc = (self.loc[0] + self.dx, self.loc[1])
+
+    def rect(self):
+        topLeftX = self.loc[0] - self.width / 2
+        topLeftY = self.loc[1] - self.height / 2
+        return Rect(topLeftX,topLeftY,self.width,self.height)
+            
+    def collidesWithBall(self,ball,player):
+        if(self.rect().colliderect(ball.rect())):
+            self.dead = True
+            ball.dead = True
+            return True
+
+    def collidesWithPaddle(self,player):
+        if(self.rect().colliderect(player.rect())):
+            self.dead = True
+            return True
+
 class Laser(gui.Paintable, gui.Updateable):
     
     def __init__(self,loc,height=480,width=10):
@@ -101,7 +139,8 @@ class Ball(gui.Paintable, gui.Updateable):
                        (255,0,0),
                        (0,0,255)][generation-1]
         self.outOfBounds = 0
-        self.value = (self.maxGenerations - generation + 1) ** 2
+        self.value = (generation + 1) ** 2
+        self.damage = (self.maxGenerations - generation + 1) ** 2
 
     def length(array):
         '''Assuming array is nxmx...x2, return an array of the length of
@@ -155,41 +194,57 @@ class Ball(gui.Paintable, gui.Updateable):
         
 class Paddle(gui.Paintable, gui.Keyable, gui.Updateable):
     
-    def __init__(self,loc,size,maxY,keys=(K_UP, K_DOWN), speed=300):
+    def __init__(self,loc,size,maxY,keys=(K_UP, K_DOWN, K_RSHIFT),guiLoc=(10,0),direction=1,speed=300):
         gui.Keyable.__init__(self,keys)
         gui.Paintable.__init__(self,loc)
+        self.guiLoc = guiLoc
         self.keys = keys
         self.upKey = keys[0]
         self.downKey = keys[1]
+        self.shootKey = keys[2]
         self.size = size
         self.maxY = maxY
         self.dy = 0
         self.speed = speed
         self.center()
+        self.reloadTime = 5000
+        self.maxEnergy = self.reloadTime
+        self.bulletEnergy = self.reloadTime / 5.0
+        self.exhausted = False
+        self.energy = 0
+        self.bullets = []
+        self.direction = direction
         
     def center(self):
         y = self.maxY / 2 - self.size[1] / 2
         self.loc = (self.loc[0],y)
-        
-    def collidesWithBall(self,ball):
+
+    def rect(self):
         topLeftX = self.loc[0] - self.size[0] / 2
         topLeftY = self.loc[1] - self.size[1] / 2
         width = self.size[0]
         height = self.size[1]
-        ourRect = Rect(topLeftX,topLeftY,width,height)
+        return Rect(topLeftX,topLeftY,width,height)
         
-        ballLeftX = ball.loc[0] - ball.radius
-        ballLeftY = ball.loc[1] - ball.radius
-        ballWidth = ball.radius * 2
-        ballHeight = ball.radius * 2
-        ballRect = Rect(ballLeftX,ballLeftY,ballWidth,ballHeight)
-        
-        if(ourRect.colliderect(ballRect)):
+    def collidesWithBall(self,ball):        
+        if(self.rect().colliderect(ball.rect())):
             ball.bounce(Ball.AXIS_X)
             return True
         return False
         
     def update(self,delay):
+        for bullet in self.bullets:
+            bullet.update(delay)
+                
+        if self.energy < self.maxEnergy:
+            self.energy += int(delay * 1000)
+
+        if self.exhausted and self.energy >= self.maxEnergy:
+            self.exhausted = False
+
+        if self.energy > self.maxEnergy:
+            self.energy = self.maxEnergy
+
         x,y = self.loc
         halfHeight = self.size[1]/2
         toMove = delay * self.speed
@@ -200,6 +255,16 @@ class Paddle(gui.Paintable, gui.Keyable, gui.Updateable):
             return
         
         self.loc = (self.loc[0],newY)
+
+
+    def shoot(self):
+        if not self.exhausted:
+            self.energy -= self.bulletEnergy
+            self.bullets.append(Bullet(self.loc, self.direction))
+
+        if self.energy <= 0:
+            self.exhausted = True
+            self.energy = 0
     
     def keyEvent(self,key,unicode, pressed):
         if key not in self.keys:
@@ -217,12 +282,23 @@ class Paddle(gui.Paintable, gui.Keyable, gui.Updateable):
             else:
                 if self.dy == 1:
                     self.dy = 0
+        elif(key == self.shootKey and pressed):
+            self.shoot()
             
     def paint(self,screen):
+        for bullet in self.bullets:
+            bullet.paint(screen)
+            
         topLeftX = self.loc[0] - (self.size[0] / 2)
         topLeftY = self.loc[1] - (self.size[1] / 2)
         rect = [topLeftX,topLeftY, self.size[0], self.size[1]]
         pygame.draw.rect(screen, (255,255,255), rect)
+
+        topLeftX = self.guiLoc[0]
+        topLeftY = self.guiLoc[1]
+        rect = [topLeftX,topLeftY, self.energy/float(self.maxEnergy)*100, 10]
+        pygame.draw.rect(screen, (255,0,0) if self.exhausted else (0,0,255), rect)
+
         
 class AIPaddle(Paddle):
     def __init__(self,loc,size,maxY,ball,speed=125):
@@ -252,14 +328,14 @@ class PlayingGameState(GuiState):
         for ball in self.balls:
             self.add(ball)
         
-        self.player1 = Paddle( (10,0), (15,75), 480,(K_w, K_s) )
+        self.player1 = Paddle( (10,0), (15,75), 480,(K_w, K_s, K_LSHIFT),(10,0),1 )
         self.player1.center()
         self.add(self.player1)
         
         self.score1 = Score((20,5))
         self.add(self.score1)
 
-        self.player2 = Paddle( (630,0), (15,75), 480, (K_UP, K_DOWN))
+        self.player2 = Paddle( (630,0), (15,75), 480, (K_UP, K_DOWN, K_RSHIFT), (380,0),-1)
         #self.player2 = AIPaddle( (630,0), (15,75), 480,self.ball)
         self.player2.center()
         self.add(self.player2)
@@ -272,6 +348,28 @@ class PlayingGameState(GuiState):
         
     def update(self,delay):
         GuiState.update(self,delay)
+
+        for bullet in self.player1.bullets[:]:
+            if bullet.collidesWithPaddle(self.player2):
+                self.score2.setScore(self.score2.getScore() - 1)
+
+            for ball in self.balls[:]:
+                if bullet.collidesWithBall(ball,self):
+                    self.score1.setScore(self.score1.getScore() + ball.value)
+
+            if bullet.dead:
+                self.player1.bullets.remove(bullet)
+
+        for bullet in self.player2.bullets[:]:
+            if bullet.collidesWithPaddle(self.player1):
+                self.score1.setScore(self.score1.getScore() - 1)
+
+            for ball in self.balls[:]:
+                if bullet.collidesWithBall(ball,self):
+                    self.score2.setScore(self.score2.getScore() + ball.value)
+
+            if bullet.dead:
+                self.player2.bullets.remove(bullet)
 
         for ball in self.balls[:]:
             self.player1.collidesWithBall(ball)
@@ -288,19 +386,20 @@ class PlayingGameState(GuiState):
         
             score = 0
             if(ball.outOfBounds < 0):
-                score = self.score2.getScore() + ball.value
+                score = self.score2.getScore() + ball.damage
                 self.score2.setScore(score)
             elif(ball.outOfBounds > 0):
-                score = self.score1.getScore() + ball.value
+                score = self.score1.getScore() + ball.damage
                 self.score1.setScore(score)
                 
             if(score):
                 ball.dead = True
-                if(score >= 50):
-                    done = GameOver(self._driver,self.screen,
-                                    self.score1,self.score2)
-                    self._driver.replace(done)
 
             if ball.dead:
                 self.remove(ball)
                 self.balls.remove(ball)
+        
+        if(len(self.balls) == 0):
+            done = GameOver(self._driver,self.screen,
+                            self.score1,self.score2)
+            self._driver.replace(done)
