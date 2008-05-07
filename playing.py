@@ -125,7 +125,7 @@ class Ball(gui.Paintable, gui.Updateable):
         self.speed = 50 + 45 * generation
         self.dead = False
         self.loc = list(loc)
-        self.dx, self.dy = [random.random()*2.0-1.0,random.random()*1.0-0.5]
+        self.dx, self.dy = [random.random()*2.0-1.0,random.random()*1.5-0.75]
         self.normalise()
         self.colour = [(255,255,255),
                        (255,0,255),
@@ -143,6 +143,37 @@ class Ball(gui.Paintable, gui.Updateable):
         vel = [a/math.sqrt(length) for a in vel]
         self.dx = vel[0]
         self.dy = vel[1]
+
+    def collidesWithBall(self, ball):
+        if ball == self:
+            return False
+
+##        # MOving towards each other
+##        if (ball.loc[0] - self.loc[0]) * ((self.loc[0]+self.dx) - (ball.loc[0]+ball.dx)) + \
+##           (ball.loc[1] - self.loc[1]) * ((self.loc[1]+self.dy) - (ball.loc[1]+ball.dy)) > 0:
+##            print "moving away"
+##            return False
+        
+        distanceBetweenSquared = ((self.loc[0]-ball.loc[0]) * (self.loc[0]-ball.loc[0])+\
+                                  (self.loc[1]-ball.loc[1]) * (self.loc[1]-ball.loc[1]))
+        if distanceBetweenSquared <= ((self.radius + ball.radius)*(self.radius + ball.radius)):
+            distanceBetween = float(math.sqrt(distanceBetweenSquared))
+            normalBetween = ((self.loc[0]-ball.loc[0])/distanceBetween,(self.loc[1]-ball.loc[1])/distanceBetween)
+            if normalBetween[0] != 0:
+                self.dx = math.fabs(self.dx) * normalBetween[0]
+                ball.dx = math.fabs(ball.dx) * -1 * normalBetween[0]
+            if normalBetween[1] != 0:
+                self.dy = math.fabs(self.dy) * normalBetween[1]
+                ball.dy = math.fabs(ball.dy) * -1 * normalBetween[1]
+            ball.normalise()
+            self.normalise()
+            self.loc[0] = self.loc[0] + normalBetween[0] * (self.radius - distanceBetween)
+            self.loc[1] = self.loc[1] + normalBetween[1] * (self.radius - distanceBetween)
+            ball.loc[0] = ball.loc[0] + normalBetween[0] * -1 * (ball.radius - distanceBetween)
+            ball.loc[1] = ball.loc[1] + normalBetween[1] * -1 * (ball.radius - distanceBetween)
+            return True
+        return False
+ 
 
     def length(array):
         '''Assuming array is nxmx...x2, return an array of the length of
@@ -178,7 +209,6 @@ class Ball(gui.Paintable, gui.Updateable):
         toMove = delay * self.speed
         moveX = self.dx * toMove
         moveY = self.dy * toMove
-        print moveX, self.radius
         
         newX = x + moveX
         newY = y + moveY
@@ -253,8 +283,6 @@ class Paddle(gui.Paintable, gui.Keyable, gui.Updateable):
         if distanceBetween < ball.radius*ball.radius:
             distanceBetween = math.sqrt(distanceBetween)
             normalVector = [ball.loc[0]-testX, ball.loc[1]-testY]
-            if distanceBetween == 0:
-                print "NOOOOOOOOOOOOO!!!!!!!!!!!!"
             normalisedNormalVector = [a/distanceBetween for a in normalVector]
 
             ball.loc[0] = ball.loc[0] + normalisedNormalVector[0] * (ball.radius - distanceBetween)
@@ -361,7 +389,8 @@ class PlayingGameState(GuiState):
         GuiState.__init__(self,driver,screen)
         random.seed(pygame.time.get_ticks())
         self.balls = []
-        self.balls.append(Ball((320,240), (640,480)))
+        self.balls.append(Ball((320,150), (640,480)))
+        self.balls.append(Ball((320,300), (640,480)))
 
         for ball in self.balls:
             self.add(ball)
@@ -409,10 +438,14 @@ class PlayingGameState(GuiState):
             if bullet.dead:
                 self.player2.bullets.remove(bullet)
 
+        ballNum = 1
         for ball in self.balls[:]:
             self.player1.collidesWithBall(ball)
             self.player2.collidesWithBall(ball)
             self.laser.collidesWithBall(ball)
+
+            for otherBall in self.balls[:]:
+                ball.collidesWithBall(otherBall)
 
             if ball.dead:
                 b1 = Ball(ball.loc, (640,480), ball.generation+1)
