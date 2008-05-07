@@ -135,7 +135,7 @@ class Ball(gui.Paintable, gui.Updateable):
                        (0,255,255),
                        (255,255,0),
                        (255,0,0),
-                       (0,0,255)][generation-1]
+                       (255,128,0)][generation-1]
         self.outOfBounds = 0
         self.value = (generation + 1) ** 2
         self.damage = (self.maxGenerations - generation + 1) ** 2
@@ -229,11 +229,9 @@ class Ball(gui.Paintable, gui.Updateable):
             moveY = self.dy * toMove * 2
             newY = y + moveY
         if(newX < -radius):
-            self.bounce(self.AXIS_X)
-            #self.outOfBounds = -1
+            self.outOfBounds = -1
         elif(newX > self.bounds[0] + radius):
-            self.bounce(self.AXIS_X)
-            #self.outOfBounds = 1
+            self.outOfBounds = 1
             
         self.loc[0] = newX
         self.loc[1] = newY

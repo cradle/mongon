@@ -2,6 +2,7 @@ import pygame
 from pygame.constants import *
  
 from states import *
+import playing
  
 class GameOver(State):
     
@@ -17,9 +18,9 @@ class GameOver(State):
         self.font = pygame.font.Font(None, 20)
             
         if(win):
-            self.setMessage("You are victorious!")
+            self.setMessage("Player 1 ams teh weiner!")
         else:
-            self.setMessage("You have lost!")
+            self.setMessage("lolcatz is the victorius!")
             
         self.score1 = score1
         self.score2 = score2
@@ -47,3 +48,8 @@ class GameOver(State):
         
         self.score1.paint(screen)
         self.score2.paint(screen)
+        
+    def keyEvent(self,key,unicode,pressed):
+        if(pressed):
+            goplay = playing.PlayingGameState(self._driver,self.screen)
+            self._driver.replace(goplay)
