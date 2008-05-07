@@ -111,12 +111,15 @@ class Ball(gui.Paintable, gui.Updateable):
     
     AXIS_X = 1
     AXIS_Y = 2
+    numBalls = 0
     
     def __init__(self,loc,bounds,generation=1):
         """The 'bounds' parameter indicates the width and height
         of the playing area"""
         gui.Paintable.__init__(self,loc)
         self.maxGenerations = 6
+        Ball.numBalls += 1
+        self.ballNum = Ball.numBalls
         if generation > self.maxGenerations:
             generation = self.maxGenerations
         self.generation = generation
@@ -138,42 +141,50 @@ class Ball(gui.Paintable, gui.Updateable):
         self.damage = (self.maxGenerations - generation + 1) ** 2
 
     def normalise(self):
-        vel = [self.dx, self.dy]
-        length = sum([v**2 for v in vel])
-        vel = [a/math.sqrt(length) for a in vel]
+        vel = self._vecNormalise((self.dx, self.dy))
         self.dx = vel[0]
         self.dy = vel[1]
+
+    def _vecNormalise(self, vec):
+        length = math.sqrt(sum([v**2 for v in vec]))
+        return tuple([a/length for a in vec])
 
     def collidesWithBall(self, ball):
         if ball == self:
             return False
 
-##        # MOving towards each other
-##        if (ball.loc[0] - self.loc[0]) * ((self.loc[0]+self.dx) - (ball.loc[0]+ball.dx)) + \
-##           (ball.loc[1] - self.loc[1]) * ((self.loc[1]+self.dy) - (ball.loc[1]+ball.dy)) > 0:
-##            print "moving away"
-##            return False
+        # MOving towards each other
+        if (ball.loc[0] - self.loc[0]) * (self.dx - ball.dx) + \
+           (ball.loc[1] - self.loc[1]) * (self.dy - ball.dy) <= 0:
+            return False
         
         distanceBetweenSquared = ((self.loc[0]-ball.loc[0]) * (self.loc[0]-ball.loc[0])+\
                                   (self.loc[1]-ball.loc[1]) * (self.loc[1]-ball.loc[1]))
         if distanceBetweenSquared <= ((self.radius + ball.radius)*(self.radius + ball.radius)):
-            distanceBetween = float(math.sqrt(distanceBetweenSquared))
-            normalBetween = ((self.loc[0]-ball.loc[0])/distanceBetween,(self.loc[1]-ball.loc[1])/distanceBetween)
-            if normalBetween[0] != 0:
-                self.dx = math.fabs(self.dx) * normalBetween[0]
-                ball.dx = math.fabs(ball.dx) * -1 * normalBetween[0]
-            if normalBetween[1] != 0:
-                self.dy = math.fabs(self.dy) * normalBetween[1]
-                ball.dy = math.fabs(ball.dy) * -1 * normalBetween[1]
-            ball.normalise()
-            self.normalise()
-            self.loc[0] = self.loc[0] + normalBetween[0] * (self.radius - distanceBetween)
-            self.loc[1] = self.loc[1] + normalBetween[1] * (self.radius - distanceBetween)
-            ball.loc[0] = ball.loc[0] + normalBetween[0] * -1 * (ball.radius - distanceBetween)
-            ball.loc[1] = ball.loc[1] + normalBetween[1] * -1 * (ball.radius - distanceBetween)
+
+            print self.ballNum, ball.ballNum
+            
+            normalBetween = ((self.loc[0]-ball.loc[0]),(self.loc[1]-ball.loc[1]))
+            normalBetween = self._vecNormalise(normalBetween)
+
+            self.reboundWithNormal(normalBetween)
+            
+            normalBetween = ((ball.loc[0]-self.loc[0]),(ball.loc[1]-self.loc[1]))
+            normalBetween = self._vecNormalise(normalBetween)
+            
+            ball.reboundWithNormal(normalBetween)
+
             return True
         return False
- 
+
+    def reboundWithNormal(self, norm):    
+        vel = [self.dx, self.dy]
+        lenVelNorm = ((norm[0]*vel[0]) + (norm[1]*vel[1]))
+        velNorm = [lenVelNorm*norm[0], lenVelNorm*norm[1]]
+        velTang = [vel[0] - velNorm[0], vel[1] - velNorm[1]]
+        newVel = [velTang[0]-velNorm[0], velTang[1]-velNorm[1]]
+        self.dx = newVel[0]
+        self.dy = newVel[1] 
 
     def length(array):
         '''Assuming array is nxmx...x2, return an array of the length of
@@ -218,9 +229,11 @@ class Ball(gui.Paintable, gui.Updateable):
             moveY = self.dy * toMove * 2
             newY = y + moveY
         if(newX < -radius):
-            self.outOfBounds = -1
+            self.bounce(self.AXIS_X)
+            #self.outOfBounds = -1
         elif(newX > self.bounds[0] + radius):
-            self.outOfBounds = 1
+            self.bounce(self.AXIS_X)
+            #self.outOfBounds = 1
             
         self.loc[0] = newX
         self.loc[1] = newY
@@ -444,8 +457,10 @@ class PlayingGameState(GuiState):
             self.player2.collidesWithBall(ball)
             self.laser.collidesWithBall(ball)
 
-            for otherBall in self.balls[:]:
+            for otherBall in self.balls[:ballNum]:
                 ball.collidesWithBall(otherBall)
+
+            ballNum += 1
 
             if ball.dead:
                 b1 = Ball(ball.loc, (640,480), ball.generation+1)
