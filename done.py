@@ -49,7 +49,13 @@ class GameOver(State):
         self.score1.paint(screen)
         self.score2.paint(screen)
         
+        surface = self.messageFont.render("Press (M)ongon key to begin", 0, (255,255,255))
+        centerX = w/2 - surface.get_width()/2
+        centerY = h*0.75 - surface.get_height()/2
+        
+        screen.blit(surface, (centerX, centerY))
+        
     def keyEvent(self,key,unicode,pressed):
-        if(pressed):
+        if(pressed and key == K_m):
             goplay = playing.PlayingGameState(self._driver,self.screen)
             self._driver.replace(goplay)

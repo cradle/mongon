@@ -117,7 +117,7 @@ class Ball(gui.Paintable, gui.Updateable):
         """The 'bounds' parameter indicates the width and height
         of the playing area"""
         gui.Paintable.__init__(self,loc)
-        self.maxGenerations = 6
+        self.maxGenerations = 7
         Ball.numBalls += 1
         self.ballNum = Ball.numBalls
         if generation > self.maxGenerations:
@@ -135,7 +135,8 @@ class Ball(gui.Paintable, gui.Updateable):
                        (0,255,255),
                        (255,255,0),
                        (255,0,0),
-                       (255,128,0)][generation-1]
+                       (255,128,0),
+                       (50,50,50)][generation-1]
         self.outOfBounds = 0
         self.value = (generation + 1) ** 2
         self.damage = (self.maxGenerations - generation + 1) ** 2
