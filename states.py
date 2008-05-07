@@ -69,7 +69,7 @@ class StateDriver:
                 currentState = self.getCurrentState()
                 
                 pygame.display.flip()
-                pygame.time.delay(10);
+                #pygame.time.delay(2);
  
     def start(self, state):
         self._states.append(state)

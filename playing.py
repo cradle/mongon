@@ -26,10 +26,7 @@ class Score(gui.Paintable):
             screen.blit(self.scoreImage, self.loc)
 
 class Bullet(gui.Paintable, gui.Updateable):
-    
     def __init__(self,loc,direction = 1, height=5,width=10):
-        """The 'bounds' parameter indicates the width and height
-        of the playing area"""
         gui.Paintable.__init__(self,loc)
         self.direction = direction
         self.height = height
@@ -74,7 +71,7 @@ class Laser(gui.Paintable, gui.Updateable):
         self.width = width
         self.angry = False
         self.counterImage = None
-        self.clobberinTime = pygame.time.get_ticks() + random.randint(10000,20000)
+        self.clobberinTime = pygame.time.get_ticks() + random.randrange(10000,20000)
         
     def paint(self,screen):
         if self.angry:
@@ -105,7 +102,7 @@ class Laser(gui.Paintable, gui.Updateable):
             if(ourRect.colliderect(ball.rect())):
                 ball.dead = True
                 self.angry = False
-                self.clobberinTime = pygame.time.get_ticks() + random.choice((1000,9000))
+                self.clobberinTime = pygame.time.get_ticks() + random.randrange(10000,20000)
                 return True
             return False
             
@@ -125,13 +122,11 @@ class Ball(gui.Paintable, gui.Updateable):
         self.generation = generation
         self.bounds = bounds
         self.radius = 32 / float(generation)
-        self.speed = 50 + 60 * generation
+        self.speed = 50 + 45 * generation
         self.dead = False
         self.loc = list(loc)
-        vel = [random.choice((-1,1,0.1)),random.choice((-1,1,0.1))]
-        vel = [a/math.sqrt(sum([v**2 for v in vel])) for a in vel]
-        self.dx = vel[0]
-        self.dy = vel[1]
+        self.dx, self.dy = [random.random()*2.0-1.0,random.random()*1.0-0.5]
+        self.normalise()
         self.colour = [(255,255,255),
                        (255,0,255),
                        (0,255,255),
@@ -141,6 +136,13 @@ class Ball(gui.Paintable, gui.Updateable):
         self.outOfBounds = 0
         self.value = (generation + 1) ** 2
         self.damage = (self.maxGenerations - generation + 1) ** 2
+
+    def normalise(self):
+        vel = [self.dx, self.dy]
+        length = sum([v**2 for v in vel])
+        vel = [a/math.sqrt(length) for a in vel]
+        self.dx = vel[0]
+        self.dy = vel[1]
 
     def length(array):
         '''Assuming array is nxmx...x2, return an array of the length of
@@ -176,6 +178,7 @@ class Ball(gui.Paintable, gui.Updateable):
         toMove = delay * self.speed
         moveX = self.dx * toMove
         moveY = self.dy * toMove
+        print moveX, self.radius
         
         newX = x + moveX
         newY = y + moveY
@@ -184,9 +187,9 @@ class Ball(gui.Paintable, gui.Updateable):
             self.bounce(self.AXIS_Y)
             moveY = self.dy * toMove * 2
             newY = y + moveY
-        if(newX < radius):
+        if(newX < -radius):
             self.outOfBounds = -1
-        elif(newX > self.bounds[0] - radius):
+        elif(newX > self.bounds[0] + radius):
             self.outOfBounds = 1
             
         self.loc[0] = newX
@@ -220,17 +223,51 @@ class Paddle(gui.Paintable, gui.Keyable, gui.Updateable):
         self.loc = (self.loc[0],y)
 
     def rect(self):
-        topLeftX = self.loc[0] - self.size[0] / 2
-        topLeftY = self.loc[1] - self.size[1] / 2
-        width = self.size[0]
-        height = self.size[1]
-        return Rect(topLeftX,topLeftY,width,height)
+        return Rect(self.topLeftX(),self.topLeftY(),self.size[0],self.size[1])
+
+    def topLeftX(self):
+        return self.loc[0] - self.size[0] / 2
+
+    def topLeftY(self):
+        return self.loc[1] - self.size[1] / 2
         
-    def collidesWithBall(self,ball):        
-        if(self.rect().colliderect(ball.rect())):
-            ball.bounce(Ball.AXIS_X)
+    def collidesWithBall(self,ball):
+        # If ball moved more than radius last move, HACK IT
+        while ball.loc[0] > self.topLeftX() and ball.loc[0] < self.topLeftX() + self.size[0] and \
+              ball.loc[1] > self.topLeftY() and ball.loc[1] < self.topLeftY() + self.size[1]:
+            ball.loc[0] -= ball.dx/abs(ball.dx) * ball.radius
+            
+        testX = ball.loc[0]
+        testY = ball.loc[1]
+        if testX < self.topLeftX():
+            testX = self.topLeftX()
+        if testX > (self.topLeftX() + self.size[0]):
+            testX = (self.topLeftX() + self.size[0])
+        if testY < self.topLeftY():
+            testY = self.topLeftY()
+        if testY > (self.topLeftY() + self.size[1]):
+            testY = (self.topLeftY() + self.size[1])
+
+        distanceBetween = ((ball.loc[0]-testX)*(ball.loc[0]-testX)+ \
+                           (ball.loc[1]-testY)*(ball.loc[1]-testY))
+        if distanceBetween < ball.radius*ball.radius:
+            distanceBetween = math.sqrt(distanceBetween)
+            normalVector = [ball.loc[0]-testX, ball.loc[1]-testY]
+            if distanceBetween == 0:
+                print "NOOOOOOOOOOOOO!!!!!!!!!!!!"
+            normalisedNormalVector = [a/distanceBetween for a in normalVector]
+
+            ball.loc[0] = ball.loc[0] + normalisedNormalVector[0] * (ball.radius - distanceBetween)
+            ball.loc[1] = ball.loc[1] + normalisedNormalVector[1] * (ball.radius - distanceBetween)
+            if normalisedNormalVector[0] != 0:
+                ball.dx = math.fabs(ball.dx) * normalisedNormalVector[0]
+            if normalisedNormalVector[1] != 0:
+                ball.dy = math.fabs(ball.dy) * normalisedNormalVector[1]
+
+            ball.normalise()
             return True
         return False
+##        # http://www.2dgamecreators.com/tutorials/gameprogramming/collision/T1%20Collision2.html#mozTocId39150
         
     def update(self,delay):
         for bullet in self.bullets:
@@ -322,6 +359,7 @@ class PlayingGameState(GuiState):
  
     def __init__(self,driver,screen):
         GuiState.__init__(self,driver,screen)
+        random.seed(pygame.time.get_ticks())
         self.balls = []
         self.balls.append(Ball((320,240), (640,480)))
 
