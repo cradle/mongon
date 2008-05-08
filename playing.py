@@ -106,7 +106,6 @@ class Laser(gui.Paintable, gui.Updateable):
                 return True
             return False
             
-            
 class Ball(gui.Paintable, gui.Updateable):
     
     AXIS_X = 1
@@ -141,8 +140,6 @@ class Ball(gui.Paintable, gui.Updateable):
         self.outOfBounds = 0
         self.value = (generation + 1) ** 2
         self.damage = (self.maxGenerations - generation + 3) ** 2
-	self.trailInterval = 0.001
-	self.trailTime = 0
 
     def normalise(self):
         vel = self._vecNormalise((self.dx, self.dy))
@@ -213,34 +210,10 @@ class Ball(gui.Paintable, gui.Updateable):
         #self.speed = self.speed + self.speed * self.increase;
         
     def paint(self,screen):
-	colour = [0,0,0]
-	radius = 0
-	for loc in self.trail:
-		colour[0] += self.colour[0]/float(len(self.trail))
-		colour[1] += self.colour[1]/float(len(self.trail))
-		colour[2] += self.colour[2]/float(len(self.trail))
-		radius += self.radius/float(len(self.trail))
-		pygame.draw.circle(screen, colour, loc, radius)
+	pygame.draw.circle(screen, self.colour, self.loc, self.radius)
 		
 
     def update(self,delay):
-	self.trailTime -= delay
-	if self.trailTime <= 0:
-		self.trail.append(self.loc[:])
-		self.trail = self.trail[-10:]
-		self.trailTime = self.trailInterval
-		
-	if self.generation == self.maxGenerations:
-		self.colour[0] += delay * 10
-		if self.colour[0] >= 255:
-			self.colour[0] = 0
-		self.colour[1] -= delay * 20
-		if self.colour[1] < 0:
-			self.colour[1] = 255
-		self.colour[2] += delay * 20
-		if self.colour[2] >= 255:
-			self.colour[2] = 0
-
         x,y = self.loc
         radius = self.radius
         toMove = delay * self.speed
@@ -262,6 +235,41 @@ class Ball(gui.Paintable, gui.Updateable):
         self.loc[0] = newX
         self.loc[1] = newY
         
+class TrailBall(Ball):
+    def __init__(self,loc,bounds,generation=1):
+	Ball.init(self, loc, bounds, generation)
+	self.trailInterval = 0.001
+	self.trailTime = 0
+
+    def update(self,delay):
+	Ball.update(delay)
+	self.trailTime -= delay
+	if self.trailTime <= 0:
+		self.trail.append(self.loc[:])
+		self.trail = self.trail[-10:]
+		self.trailTime = self.trailInterval
+	
+	self.colour[0] += delay * 10
+	if self.colour[0] >= 255:
+		self.colour[0] = 0
+	self.colour[1] -= delay * 20
+	if self.colour[1] < 0:
+		self.colour[1] = 255
+	self.colour[2] += delay * 20
+	if self.colour[2] >= 255:
+		self.colour[2] = 0
+
+    def paint(self,screen):
+	colour = [0,0,0]
+	radius = 0
+	for loc in self.trail:
+		colour[0] += self.colour[0]/float(len(self.trail))
+		colour[1] += self.colour[1]/float(len(self.trail))
+		colour[2] += self.colour[2]/float(len(self.trail))
+		radius += self.radius/float(len(self.trail))
+		pygame.draw.circle(screen, colour, loc, radius)
+
+            
 class Paddle(gui.Paintable, gui.Keyable, gui.Updateable):
     
     def __init__(self,loc,size,maxY,keys=(K_UP, K_DOWN, K_RSHIFT),guiLoc=(10,0),direction=1,speed=300):
@@ -452,20 +460,18 @@ class BiffPaddle(AIPaddle):
 	closestBall = self.findClosestBall()
 	
 	y = self.interceptingPoint(closestBall)
-
-	if y > self.loc[1]:
+	if self.loc[1] < y - 5:
             self.dy = 1
-        elif y < self.loc[1] - self.size[1]/2.0:
+	elif self.loc[1] > y + 5:
             self.dy = -1
         else:
             self.dy = 0
 
     def interceptingPoint(self, ball):
-	return ball.loc[1] + ball.dy * self.interceptingTime(ball)
+	return ball.loc[1] + ball.dy*self.interceptingTime(ball)
 
     def interceptingTime(self, ball):
-	return (self.screenWidth - ball.loc[0]) / ball.dx
-
+	return ((self.screenWidth-self.size[0]) - ball.loc[0]) / ball.dx
 
     def findClosestBall(self):
 	cBall = self.balls[0]
