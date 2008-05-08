@@ -28,7 +28,7 @@ class VersusGameState(GuiState):
         self.player2.center()
         self.add(self.player2)
         
-        self.score2 = Score((610,5))
+        self.score2 = Score((600,5))
         self.add(self.score2)
 
         self.laser = Laser((320,0))

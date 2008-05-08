@@ -5,6 +5,7 @@ import pygame
 from pygame.constants import *
 import versus
 import campaign
+import demo
  
 def main():
     pygame.init()
@@ -17,13 +18,21 @@ def main():
     driver.start(title)
     driver.run()
  
-class TitleScreen(states.State):
+class TitleScreen(states.GuiState):
     
     def __init__(self,driver,screen):
-        states.State.__init__(self,driver,screen)
+        states.GuiState.__init__(self,driver,screen)
         self.pongFont = pygame.font.Font(None,92)
         self.font = pygame.font.Font(None, 16)
-    
+        self.timeUntilStartDemo = 10
+
+    def update(self, delay):
+        states.GuiState.update(self,delay)
+        self.timeUntilStartDemo -= delay
+        if self.timeUntilStartDemo < 0:
+            playing = demo.DemoGameState(self._driver,self.screen)
+            self._driver.replace(playing)
+                
     def paint(self,screen):
         white = (255, 255, 255)
         
@@ -61,6 +70,9 @@ class TitleScreen(states.State):
             self._driver.replace(playing)
         elif(pressed and key == K_1):
             playing = campaign.CampaignGameState(self._driver,self.screen)
+            self._driver.replace(playing)
+        elif(pressed and key == K_3):
+            playing = demo.DemoGameState(self._driver,self.screen)
             self._driver.replace(playing)
     
 if __name__ == '__main__':
