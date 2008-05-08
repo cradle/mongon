@@ -237,37 +237,23 @@ class Ball(gui.Paintable, gui.Updateable):
         
 class TrailBall(Ball):
     def __init__(self,loc,bounds,generation=1):
-	Ball.init(self, loc, bounds, generation)
-	self.trailInterval = 0.001
+	Ball.__init__(self, loc, bounds, generation)
+	self.trailInterval = 0.0001
 	self.trailTime = 0
+        self.trail.append(self.loc[:])
 
     def update(self,delay):
-	Ball.update(delay)
+	Ball.update(self, delay)
 	self.trailTime -= delay
 	if self.trailTime <= 0:
 		self.trail.append(self.loc[:])
-		self.trail = self.trail[-10:]
+		self.trail = self.trail[-5:]
 		self.trailTime = self.trailInterval
-	
-	self.colour[0] += delay * 10
-	if self.colour[0] >= 255:
-		self.colour[0] = 0
-	self.colour[1] -= delay * 20
-	if self.colour[1] < 0:
-		self.colour[1] = 255
-	self.colour[2] += delay * 20
-	if self.colour[2] >= 255:
-		self.colour[2] = 0
 
     def paint(self,screen):
-	colour = [0,0,0]
-	radius = 0
+	colour = [c/float(len(self.trail)) for c in self.colour]
 	for loc in self.trail:
-		colour[0] += self.colour[0]/float(len(self.trail))
-		colour[1] += self.colour[1]/float(len(self.trail))
-		colour[2] += self.colour[2]/float(len(self.trail))
-		radius += self.radius/float(len(self.trail))
-		pygame.draw.circle(screen, colour, loc, radius)
+		pygame.draw.circle(screen, colour, loc, self.radius)
 
             
 class Paddle(gui.Paintable, gui.Keyable, gui.Updateable):
