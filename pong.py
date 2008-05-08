@@ -3,7 +3,8 @@
 import states
 import pygame
 from pygame.constants import *
-from playing import PlayingGameState
+import versus
+import campaign
  
 def main():
     pygame.init()
@@ -40,19 +41,13 @@ class TitleScreen(states.State):
         
         screen.blit(surface, (centerX, centerY))
         
-        surface = self.font.render("Press any key to begin", 0, white)
-        centerX = w/2 - surface.get_width()/2
-        centerY = h*0.65 - surface.get_height()/2
-        
-        screen.blit(surface, (centerX, centerY))
-        
-        surface = self.font.render("P1 w s leftshift", 0, (255,128,128))
+        surface = self.font.render("Press 1 for One Player", 0, (255,128,128))
         centerX = w/2 - surface.get_width()/2
         centerY = h*0.80 - surface.get_height()/2
         
         screen.blit(surface, (centerX, centerY))
         
-        surface = self.font.render("P2 up down rshift", 0, (255,128,128))
+        surface = self.font.render("Press 2 for Two Players", 0, (255,128,128))
         centerX = w/2 - surface.get_width()/2
         centerY = h*0.85 - surface.get_height()/2
         
@@ -61,8 +56,11 @@ class TitleScreen(states.State):
     def keyEvent(self,key,unicode,pressed):
 	if key == K_q:
 	    pygame.quit()
-        elif(pressed):
-            playing = PlayingGameState(self._driver,self.screen)
+        elif(pressed and key == K_2):
+            playing = versus.VersusGameState(self._driver,self.screen)
+            self._driver.replace(playing)
+        elif(pressed and key == K_1):
+            playing = campaign.CampaignGameState(self._driver,self.screen)
             self._driver.replace(playing)
     
 if __name__ == '__main__':

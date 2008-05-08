@@ -2,7 +2,7 @@ import pygame
 from pygame.constants import *
  
 from states import *
-import playing
+import pong
  
 class GameOver(State):
     
@@ -20,7 +20,7 @@ class GameOver(State):
         if(win):
             self.setMessage("Player 1 ams teh weiner!")
         else:
-            self.setMessage("lolcatz is the victorius!")
+            self.setMessage("You lose!")
             
         self.score1 = score1
         self.score2 = score2
@@ -49,7 +49,7 @@ class GameOver(State):
         self.score1.paint(screen)
         self.score2.paint(screen)
         
-        surface = self.messageFont.render("Press (M)ongon key to begin", 0, (255,255,255))
+        surface = self.messageFont.render("Press (M)ongon", 0, (255,255,255))
         centerX = w/2 - surface.get_width()/2
         centerY = h*0.75 - surface.get_height()/2
         
@@ -57,5 +57,5 @@ class GameOver(State):
         
     def keyEvent(self,key,unicode,pressed):
         if(pressed and key == K_m):
-            goplay = playing.PlayingGameState(self._driver,self.screen)
+            goplay = pong.TitleScreen(self._driver,self.screen)
             self._driver.replace(goplay)
