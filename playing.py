@@ -130,16 +130,19 @@ class Ball(gui.Paintable, gui.Updateable):
         self.loc = list(loc)
         self.dx, self.dy = [random.random()*2.0-1.0,random.random()*1.5-0.75]
         self.normalise()
-        self.colour = [(255,255,255),
-                       (255,0,255),
-                       (0,255,255),
-                       (255,255,0),
-                       (255,0,0),
-                       (255,128,0),
-                       (50,50,50)][generation-1]
+        self.colour = [[100,100,255],
+                       [255,0,255],
+                       [0,255,255],
+                       [255,255,0],
+                       [255,0,0],
+                       [255,128,0],
+                       [255,255,255]][generation-1]
+	self.trail = []
         self.outOfBounds = 0
         self.value = (generation + 1) ** 2
-        self.damage = (self.maxGenerations - generation + 1) ** 2
+        self.damage = (self.maxGenerations - generation + 3) ** 2
+	self.trailInterval = 0.001
+	self.trailTime = 0
 
     def normalise(self):
         vel = self._vecNormalise((self.dx, self.dy))
@@ -163,7 +166,6 @@ class Ball(gui.Paintable, gui.Updateable):
                                   (self.loc[1]-ball.loc[1]) * (self.loc[1]-ball.loc[1]))
         if distanceBetweenSquared <= ((self.radius + ball.radius)*(self.radius + ball.radius)):
 
-            print self.ballNum, ball.ballNum
             
             normalBetween = ((self.loc[0]-ball.loc[0]),(self.loc[1]-ball.loc[1]))
             normalBetween = self._vecNormalise(normalBetween)
@@ -211,11 +213,34 @@ class Ball(gui.Paintable, gui.Updateable):
         #self.speed = self.speed + self.speed * self.increase;
         
     def paint(self,screen):
-        x = int(self.loc[0])
-        y = int(self.loc[1])
-        pygame.draw.circle(screen, self.colour, (x,y),self.radius)
+	colour = [0,0,0]
+	radius = 0
+	for loc in self.trail:
+		colour[0] += self.colour[0]/float(len(self.trail))
+		colour[1] += self.colour[1]/float(len(self.trail))
+		colour[2] += self.colour[2]/float(len(self.trail))
+		radius += self.radius/float(len(self.trail))
+		pygame.draw.circle(screen, colour, loc, radius)
+		
 
     def update(self,delay):
+	self.trailTime -= delay
+	if self.trailTime <= 0:
+		self.trail.append(self.loc[:])
+		self.trail = self.trail[-10:]
+		self.trailTime = self.trailInterval
+		
+	if self.generation == self.maxGenerations:
+		self.colour[0] += delay * 10
+		if self.colour[0] >= 255:
+			self.colour[0] = 0
+		self.colour[1] -= delay * 20
+		if self.colour[1] < 0:
+			self.colour[1] = 255
+		self.colour[2] += delay * 20
+		if self.colour[2] >= 255:
+			self.colour[2] = 0
+
         x,y = self.loc
         radius = self.radius
         toMove = delay * self.speed
@@ -378,22 +403,83 @@ class Paddle(gui.Paintable, gui.Keyable, gui.Updateable):
 
         
 class AIPaddle(Paddle):
-    def __init__(self,loc,size,maxY,ball,speed=125):
-        Paddle.__init__(self,loc,size,maxY,speed)
-        self.ball = ball
+    def __init__(self,loc,size,maxY,balls,direction=-1):
+        Paddle.__init__(self,loc,size,maxY)
+	self.direction = direction
+        self.balls = balls
+	self.screenWidth = loc[0]
+	self.timeTillNextShot = 0
+	self.timeBetweenShots = 1
         
     def keyEvent(self,key,unicode,pressed):
         pass
     
     def update(self,delay):
         Paddle.update(self,delay)
+	self.timeTillNextShot -= delay
+	if self.timeTillNextShot < 0:
+		self.timeTillNextShot = self.timeBetweenShots
+		self.shoot()
         
-        if(self.ball.loc[1] > self.loc[1] + 5):
+	closestBall = self.findClosestBall()
+
+        if(closestBall.loc[1] - closestBall.radius > self.loc[1]):
             self.dy = 1
-        elif(self.ball.loc[1] < self.loc[1] - 1):
+        elif(closestBall.loc[1] + closestBall.radius < self.loc[1] + self.size[0]):
             self.dy = -1
         else:
             self.dy = 0
+    
+    def findClosestBall(self):
+	cBall = self.balls[0]
+	for ball in self.balls[1:]:
+		if -1 * self.direction * ball.dx > 0 and\
+		   (self.screenWidth - ball.loc[0])/ball.dx < \
+		   (self.screenWidth - cBall.loc[0])/cBall.dx:
+			cBall = ball
+		if -1 * self.direction * cBall.dx <= 0:
+			cBall = ball	
+	return cBall
+
+class BiffPaddle(AIPaddle):
+    def update(self,delay):
+        AIPaddle.update(self,delay)
+	self.timeTillNextShot -= delay
+	if self.timeTillNextShot < 0:
+		self.timeTillNextShot = self.timeBetweenShots
+		self.shoot()
+        
+	closestBall = self.findClosestBall()
+	
+	y = self.interceptingPoint(closestBall)
+
+	if y > self.loc[1]:
+            self.dy = 1
+        elif y < self.loc[1] - self.size[1]/2.0:
+            self.dy = -1
+        else:
+            self.dy = 0
+
+    def interceptingPoint(self, ball):
+	return ball.loc[1] + ball.dy * self.interceptingTime(ball)
+
+    def interceptingTime(self, ball):
+	return (self.screenWidth - ball.loc[0]) / ball.dx
+
+
+    def findClosestBall(self):
+	cBall = self.balls[0]
+	for ball in self.balls[1:]:
+		if -1 * self.direction * ball.dx > 0 and\
+		   self.interceptingTime(ball) < \
+		   self.interceptingTime(cBall) and \
+		   (self.interceptingPoint(cBall)-self.loc[1])/self.speed < \
+		   self.interceptingTime(cBall):
+			cBall = ball
+		if -1 * self.direction * cBall.dx <= 0:
+			cBall = ball	
+	return cBall
+	
         
 class PlayingGameState(GuiState):
  
@@ -407,15 +493,16 @@ class PlayingGameState(GuiState):
         for ball in self.balls:
             self.add(ball)
         
-        self.player1 = Paddle( (10,0), (15,75), 480,(K_w, K_s, K_LSHIFT),(10,0),1 )
+        #self.player1 = Paddle( (10,0), (15,75), 480,(K_w, K_s, K_LSHIFT),(10,0),1 )
+	self.player1 = AIPaddle( (10,0),(15,75), 480, self.balls, 1)
         self.player1.center()
         self.add(self.player1)
         
         self.score1 = Score((20,5))
         self.add(self.score1)
 
-        self.player2 = Paddle( (630,0), (15,75), 480, (K_UP, K_DOWN, K_RSHIFT), (380,0),-1)
-        #self.player2 = AIPaddle( (630,0), (15,75), 480,self.ball)
+        #self.player2 = Paddle( (630,0), (15,75), 480, (K_UP, K_DOWN, K_LEFT), (380,0),-1)
+        self.player2 = BiffPaddle( (630,0), (15,75), 480,self.balls, -1)
         self.player2.center()
         self.add(self.player2)
         
