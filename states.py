@@ -8,6 +8,8 @@ class StateDriver:
     def __init__(self,screen):
         self._states = []
         self._screen = screen
+	self._tempScreen = self._screen.copy()
+	self._oldScreens = [screen] * 5
  
     def done(self):
         self._states.pop()
@@ -57,18 +59,20 @@ class StateDriver:
                         currentState.mouseEvent(event)
             
                 event = pygame.event.poll()
-            self._screen.fill( (0, 0, 0) )
+            self._screen.fill( (0,0,0) )
             if currentState:
                 currentState.paint(self._screen)
-                
                 curTime = pygame.time.get_ticks()
                 elapsed = float(curTime-lastRan)/1000.0
                 currentState.update(elapsed)
                 lastRan = curTime
                 
                 currentState = self.getCurrentState()
-                
+
+		
                 pygame.display.flip()
+		#self._oldScreens.append(self._screen.copy())
+		#self._oldScreens.pop(0)
                 #pygame.time.delay(2);
  
     def start(self, state):
@@ -139,14 +143,11 @@ class GuiState(State):
     def mouseEvent(self,event):
         x,y = event.pos
         for mouseable in self.mouseables:
-            x1,y1 = mouseable.loc[0:2]
-            try:
-                w,h = mouseable.loc[2:4]
-            except IndexError:
-                w,h = self.screen.get_width(),self.screen.get_height()
-            if ( x >= x1   and y >= y1 and
-                 x <  x1+w and y <  y1+h):
-                mouseable.mouseEvent(event)
+            #x1,y1 = mouseable.loc[0:2]
+	    #w,h = self.screen.get_width(),self.screen.get_height()
+            #if ( x >= x1   and y >= y1 and
+            #     x <  x1+w and y <  y1+h):
+	    mouseable.mouseEvent(event)
                 
     def update(self,delay):
         for updateable in self.updateables:

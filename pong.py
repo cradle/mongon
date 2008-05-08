@@ -59,7 +59,9 @@ class TitleScreen(states.State):
         screen.blit(surface, (centerX, centerY))
         
     def keyEvent(self,key,unicode,pressed):
-        if(pressed):
+	if key == K_q:
+	    pygame.quit()
+        elif(pressed):
             playing = PlayingGameState(self._driver,self.screen)
             self._driver.replace(playing)
     

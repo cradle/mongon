@@ -32,7 +32,7 @@ class Bullet(gui.Paintable, gui.Updateable):
         self.height = height
         self.width = width
         self.dead = False
-        self.dx = 10 * self.direction
+        self.dx = 400 * self.direction
         self.loc = (loc[0] + self.width * self.direction + 5, loc[1])
         
     def paint(self,screen):
@@ -40,9 +40,10 @@ class Bullet(gui.Paintable, gui.Updateable):
         topLeftY = self.loc[1] - (self.height / 2)
         rect = [topLeftX,topLeftY, self.width, self.height]
         pygame.draw.rect(screen, (0,0,255), rect)
+	
 
     def update(self,delay):
-        self.loc = (self.loc[0] + self.dx, self.loc[1])
+        self.loc = (self.loc[0] + self.dx*delay, self.loc[1])
 
     def rect(self):
         topLeftX = self.loc[0] - self.width / 2
@@ -112,30 +113,33 @@ class Ball(gui.Paintable, gui.Updateable):
     AXIS_Y = 2
     numBalls = 0
     
-    def __init__(self,loc,bounds,generation=1):
+    def __init__(self,loc,bounds,generation=0):
         """The 'bounds' parameter indicates the width and height
         of the playing area"""
         gui.Paintable.__init__(self,loc)
-        self.maxGenerations = 7
-        Ball.numBalls += 1
-        self.ballNum = Ball.numBalls
+        colours =     [[255,128,0],
+		       [128,0,255],
+		       [0,255,0],
+		       [0,0,255],
+		       [255,0,0],
+		       [255,255,0],
+		       [0,255,255],
+		       [255,0,255],
+                       [255,255,255]]
+        self.maxGenerations = len(colours)-1
         if generation > self.maxGenerations:
             generation = self.maxGenerations
+	self.colour = colours[generation]
+        Ball.numBalls += 1
+        self.ballNum = Ball.numBalls
         self.generation = generation
         self.bounds = bounds
-        self.radius = 32 / float(generation)
-        self.speed = 50 + 45 * generation
+        self.radius = (self.maxGenerations-self.generation+2) ** 2
+        self.speed = 50 * (generation+1)
         self.dead = False
         self.loc = list(loc)
         self.dx, self.dy = [random.random()*2.0-1.0,random.random()*1.5-0.75]
         self.normalise()
-        self.colour = [[100,100,255],
-                       [255,0,255],
-                       [0,255,255],
-                       [255,255,0],
-                       [255,0,0],
-                       [255,128,0],
-                       [255,255,255]][generation-1]
 	self.trail = []
         self.outOfBounds = 0
         self.value = (generation + 1) ** 2
@@ -236,7 +240,7 @@ class Ball(gui.Paintable, gui.Updateable):
         self.loc[1] = newY
         
 class TrailBall(Ball):
-    def __init__(self,loc,bounds,generation=1):
+    def __init__(self,loc,bounds,generation=0):
 	Ball.__init__(self, loc, bounds, generation)
 	self.trailInterval = 0.0001
 	self.trailTime = 0
@@ -251,11 +255,10 @@ class TrailBall(Ball):
 		self.trailTime = self.trailInterval
 
     def paint(self,screen):
-	colour = [c/float(len(self.trail)) for c in self.colour]
+	self.colour[3] = 255/len(self.trail)
 	for loc in self.trail:
-		pygame.draw.circle(screen, colour, loc, self.radius)
+		pygame.draw.circle(screen, self.colour, loc, self.radius)
 
-            
 class Paddle(gui.Paintable, gui.Keyable, gui.Updateable):
     
     def __init__(self,loc,size,maxY,keys=(K_UP, K_DOWN, K_RSHIFT),guiLoc=(10,0),direction=1,speed=300):
@@ -263,9 +266,9 @@ class Paddle(gui.Paintable, gui.Keyable, gui.Updateable):
         gui.Paintable.__init__(self,loc)
         self.guiLoc = guiLoc
         self.keys = keys
-        self.upKey = keys[0]
-        self.downKey = keys[1]
-        self.shootKey = keys[2]
+	self.upKey = keys[0] if keys else None
+	self.downKey = keys[1] if keys else None
+	self.shootKey = keys[2] if keys else None
         self.size = size
         self.maxY = maxY
         self.dy = 0
@@ -274,7 +277,7 @@ class Paddle(gui.Paintable, gui.Keyable, gui.Updateable):
         self.reloadTime = 5000
         self.maxEnergy = self.reloadTime
         self.bulletEnergy = self.reloadTime / 5.0
-        self.exhausted = False
+        self.exhausted = True
         self.energy = 0
         self.bullets = []
         self.direction = direction
@@ -327,6 +330,7 @@ class Paddle(gui.Paintable, gui.Keyable, gui.Updateable):
             return True
         return False
 ##        # http://www.2dgamecreators.com/tutorials/gameprogramming/collision/T1%20Collision2.html#mozTocId39150
+
         
     def update(self,delay):
         for bullet in self.bullets:
@@ -394,6 +398,31 @@ class Paddle(gui.Paintable, gui.Keyable, gui.Updateable):
         topLeftY = self.guiLoc[1]
         rect = [topLeftX,topLeftY, self.energy/float(self.maxEnergy)*100, 10]
         pygame.draw.rect(screen, (255,0,0) if self.exhausted else (0,0,255), rect)
+
+class MousePaddle(Paddle, gui.Mouseable):
+    
+    def __init__(self,loc,size,maxY,guiLoc=(10,0),direction=1):
+   	Paddle.__init__(self,loc,size,maxY,None,guiLoc,direction,300)
+
+    def keyEvent(self,key,unicode, pressed):
+	pass
+
+    def mouseEvent(self, event):
+	if event.type == MOUSEMOTION:
+		halfHeight = self.size[1]/2
+		
+		newY = event.pos[1]
+		if(newY < halfHeight):
+			newY = halfHeight
+		if(newY > self.maxY - halfHeight):
+			newY = self.maxY - halfHeight
+		
+		self.loc = (self.loc[0],newY)
+	elif event.type == MOUSEBUTTONDOWN:
+		self.shoot()
+	else:
+		pass
+
 
         
 class AIPaddle(Paddle):
@@ -480,13 +509,12 @@ class PlayingGameState(GuiState):
         random.seed(pygame.time.get_ticks())
         self.balls = []
         self.balls.append(Ball((320,150), (640,480)))
-        self.balls.append(Ball((320,300), (640,480)))
 
         for ball in self.balls:
             self.add(ball)
         
         #self.player1 = Paddle( (10,0), (15,75), 480,(K_w, K_s, K_LSHIFT),(10,0),1 )
-	self.player1 = AIPaddle( (10,0),(15,75), 480, self.balls, 1)
+	self.player1 = MousePaddle( (10,0),(15,75), 480, (10,0), 1)
         self.player1.center()
         self.add(self.player1)
         
@@ -567,3 +595,7 @@ class PlayingGameState(GuiState):
             done = GameOver(self._driver,self.screen,
                             self.score1,self.score2)
             self._driver.replace(done)
+    
+    def keyEvent(self, key, unicode, value):
+	if key == K_q:
+	    pygame.quit()
