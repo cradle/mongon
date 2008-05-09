@@ -2,6 +2,7 @@ from states import *
 import gui
 import random
 import pygame
+import pong
 from pygame.constants import *
 import done
 from objects import *
@@ -52,8 +53,7 @@ class CampaignGameState(GuiState):
         GuiState.update(self,delay)
 
         for bullet in self.player1.bullets[:]:
-            if bullet.collidesWithPaddle(self.player2):
-                self.score2.setScore(self.score2.getScore() - 1)
+            bullet.collidesWithPaddle(self.player2)
 
             for ball in self.balls[:]:
                 if bullet.collidesWithBall(ball,self):
@@ -63,8 +63,7 @@ class CampaignGameState(GuiState):
                 self.player1.bullets.remove(bullet)
 
         for bullet in self.player2.bullets[:]:
-            if bullet.collidesWithPaddle(self.player1):
-                self.score1.setScore(self.score1.getScore() - 1)
+            bullet.collidesWithPaddle(self.player1)
 
             for ball in self.balls[:]:
                 if bullet.collidesWithBall(ball,self):
@@ -120,13 +119,13 @@ class CampaignGameState(GuiState):
 
     def paint(self, screen):
         w,h = screen.get_size()
-        surface = self.pongFont.render("WORLD 1",0, (20, 20, 20))
+        surface = self.pongFont.render("WORLD 1",0, (40, 40, 40))
         
         centerX = w/2 - surface.get_width()/2
         centerY = h*0.1 - surface.get_height()/2
         
         screen.blit(surface, (centerX,centerY))
-        surface = self.pongFont.render("LEVEL %s" % (self.level+1),0, (20, 20, 20))
+        surface = self.pongFont.render("LEVEL %s" % (self.level+1),0, (40, 40, 40))
         
         centerX = w/2 - surface.get_width()/2
         centerY = h*0.25 - surface.get_height()/2
@@ -137,4 +136,5 @@ class CampaignGameState(GuiState):
     
     def keyEvent(self, key, unicode, value):
 	if key == K_q:
-	    pygame.quit()
+		title = pong.TitleScreen(self._driver, self.screen)
+		self._driver.replace(title)

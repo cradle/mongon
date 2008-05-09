@@ -2,6 +2,7 @@ from states import *
 import gui
 import random
 import pygame
+import pong
 from pygame.constants import *
 from done import GameOver
 from objects import *
@@ -38,8 +39,7 @@ class VersusGameState(GuiState):
         GuiState.update(self,delay)
 
         for bullet in self.player1.bullets[:]:
-            if bullet.collidesWithPaddle(self.player2):
-                self.score2.setScore(self.score2.getScore() - 1)
+            bullet.collidesWithPaddle(self.player2)
 
             for ball in self.balls[:]:
                 if bullet.collidesWithBall(ball,self):
@@ -49,8 +49,7 @@ class VersusGameState(GuiState):
                 self.player1.bullets.remove(bullet)
 
         for bullet in self.player2.bullets[:]:
-            if bullet.collidesWithPaddle(self.player1):
-                self.score1.setScore(self.score1.getScore() - 1)
+            bullet.collidesWithPaddle(self.player1)
 
             for ball in self.balls[:]:
                 if bullet.collidesWithBall(ball,self):
@@ -101,4 +100,5 @@ class VersusGameState(GuiState):
     def keyEvent(self,key,unicode,pressed):
         GuiState.keyEvent(self,key,unicode,pressed)
 	if key == K_q:
-	    pygame.quit()
+            goplay = pong.TitleScreen(self._driver,self.screen)
+            self._driver.replace(goplay)

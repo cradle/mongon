@@ -38,7 +38,7 @@ class Bullet(gui.Paintable, gui.Updateable):
         topLeftX = self.loc[0] - (self.width / 2)
         topLeftY = self.loc[1] - (self.height / 2)
         rect = [topLeftX,topLeftY, self.width, self.height]
-        pygame.draw.rect(screen, (0,0,255), rect)
+        pygame.draw.rect(screen, (0,0,255), rect, 1)
 	
 
     def update(self,delay):
@@ -57,6 +57,7 @@ class Bullet(gui.Paintable, gui.Updateable):
 
     def collidesWithPaddle(self,player):
         if(self.rect().colliderect(player.rect())):
+	    player.freeze()
             self.dead = True
             return True
 
@@ -78,7 +79,7 @@ class Laser(gui.Paintable, gui.Updateable):
             topLeftX = self.loc[0] - (self.width / 2)
             topLeftY = 0
             rect = [topLeftX,topLeftY, self.width, self.height]
-            pygame.draw.rect(screen, (255,0,0), rect)
+            pygame.draw.rect(screen, (255,0,0), rect, 1)
         if self.counterImage:
             screen.blit(self.counterImage, self.loc)
 
@@ -215,7 +216,16 @@ class Ball(gui.Paintable, gui.Updateable):
         #self.speed = self.speed + self.speed * self.increase;
         
     def paint(self,screen):
-	pygame.draw.circle(screen, self.colour, self.loc, self.radius)
+	pygame.draw.circle(screen, self.colour, self.loc, self.radius, 1)
+	return
+	colour = self.colour
+	radius = self.radius
+	rings = radius * 0.30
+	for i in range(rings):
+		colour = [c+(255-c)/(rings-i) for c in colour]
+		radius -= 1
+		pygame.draw.circle(screen, colour, self.loc, radius)
+
 		
 
     def update(self,delay):
@@ -258,7 +268,7 @@ class TrailBall(Ball):
     def paint(self,screen):
 	self.colour[3] = 255/len(self.trail)
 	for loc in self.trail:
-		pygame.draw.circle(screen, self.colour, loc, self.radius)
+		pygame.draw.circle(screen, self.colour, loc, self.radius, 1)
 
 class Paddle(gui.Paintable, gui.Keyable, gui.Updateable):
     
@@ -270,6 +280,8 @@ class Paddle(gui.Paintable, gui.Keyable, gui.Updateable):
 	self.upKey = keys[0] if keys else None
 	self.downKey = keys[1] if keys else None
 	self.shootKey = keys[2] if keys else None
+	self.frozenTime = 0
+	self.maxFrozenTime = 1
         self.size = size
         self.maxY = maxY
         self.dy = 0
@@ -282,6 +294,9 @@ class Paddle(gui.Paintable, gui.Keyable, gui.Updateable):
         self.energy = 0
         self.bullets = []
         self.direction = direction
+
+    def freeze(self):
+	self.frozenTime = self.maxFrozenTime
         
     def center(self):
         y = self.maxY / 2 - self.size[1] / 2
@@ -336,6 +351,11 @@ class Paddle(gui.Paintable, gui.Keyable, gui.Updateable):
     def update(self,delay):
         for bullet in self.bullets:
             bullet.update(delay)
+
+	self.frozenTime -= delay
+	
+	if self.frozen():
+	    return
                 
         if self.energy < self.maxEnergy:
             self.energy += int(delay * 1000)
@@ -386,6 +406,10 @@ class Paddle(gui.Paintable, gui.Keyable, gui.Updateable):
                     self.dy = 0
         elif(key == self.shootKey and pressed):
             self.shoot()
+
+    def frozen(self):
+	print self.frozenTime > 0
+	return self.frozenTime > 0
             
     def paint(self,screen):
         for bullet in self.bullets:
@@ -394,12 +418,23 @@ class Paddle(gui.Paintable, gui.Keyable, gui.Updateable):
         topLeftX = self.loc[0] - (self.size[0] / 2)
         topLeftY = self.loc[1] - (self.size[1] / 2)
         rect = [topLeftX,topLeftY, self.size[0], self.size[1]]
-        pygame.draw.rect(screen, (255,255,255), rect)
+	if not self.frozen():
+	    pygame.draw.rect(screen, (255,255,255), rect, 1)
+	else:
+	    pygame.draw.rect(screen, (0,0,255), rect, 1)
+	    rect[0] += 1
+	    rect[1] += math.ceil(rect[3]*(1 - self.frozenTime/self.maxFrozenTime))
+	    rect[1] -= 1
+	    rect[2] -= 2
+	    rect[3] *= (self.frozenTime / self.maxFrozenTime)
+	    rect[3] = math.floor(rect[3])
+	    pygame.draw.rect(screen, (128,0,0), rect)
+	    
 
         topLeftX = self.guiLoc[0]
         topLeftY = self.guiLoc[1]
         rect = [topLeftX,topLeftY, self.energy/float(self.maxEnergy)*100, 10]
-        pygame.draw.rect(screen, (255,0,0) if self.exhausted else (0,0,255), rect)
+        pygame.draw.rect(screen, (255,0,0) if self.exhausted else (0,0,255), rect, 1)
 
 class MousePaddle(Paddle, gui.Mouseable):
     
@@ -410,10 +445,12 @@ class MousePaddle(Paddle, gui.Mouseable):
 	pass
 
     def mouseEvent(self, event):
+	if self.frozen():
+		return
 	if event.type == MOUSEMOTION:
 		halfHeight = self.size[1]/2
 		
-		newY = event.pos[1]
+		newY = self.loc[1] + event.rel[1]
 		if(newY < halfHeight):
 			newY = halfHeight
 		if(newY > self.maxY - halfHeight):
@@ -440,6 +477,9 @@ class AIPaddle(Paddle):
     
     def update(self,delay):
         Paddle.update(self,delay)
+	if self.frozen():
+		return
+
 	self.timeTillNextShot -= delay
 	if self.timeTillNextShot < 0:
 		self.timeTillNextShot = self.timeBetweenShots
@@ -468,6 +508,10 @@ class AIPaddle(Paddle):
 class BiffPaddle(AIPaddle):
     def update(self,delay):
         AIPaddle.update(self,delay)
+
+	if self.frozen():
+		return
+
 	self.timeTillNextShot -= delay
 	if self.timeTillNextShot < 0:
 		self.timeTillNextShot = self.timeBetweenShots

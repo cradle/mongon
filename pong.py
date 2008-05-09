@@ -63,7 +63,7 @@ class TitleScreen(states.GuiState):
         screen.blit(surface, (centerX, centerY))
         
     def keyEvent(self,key,unicode,pressed):
-	if key == K_q:
+	if key == K_q and pressed:
 	    pygame.quit()
         elif(pressed and key == K_2):
             playing = versus.VersusGameState(self._driver,self.screen)
