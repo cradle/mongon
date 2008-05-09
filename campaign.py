@@ -59,7 +59,7 @@ class GameState(GuiState):
             bullet.collidesWithPaddle(self.player2)
 
             for ball in self.balls[:]:
-                if bullet.collidesWithBall(ball,self):
+                if bullet.collidesWithBall(ball,self.player1):
                     self.score1.setScore(self.score1.getScore() + ball.value)
 
             if bullet.dead:
@@ -69,7 +69,7 @@ class GameState(GuiState):
             bullet.collidesWithPaddle(self.player1)
 
             for ball in self.balls[:]:
-                if bullet.collidesWithBall(ball,self):
+                if bullet.collidesWithBall(ball,self.player2):
                     self.score2.setScore(self.score2.getScore() + ball.value)
 
             if bullet.dead:

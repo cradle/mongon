@@ -3,10 +3,7 @@
 import states
 import pygame
 from pygame.constants import *
-import versus
-import campaign
-import demo
-import world1
+import modes
  
 def main():
     pygame.init()
@@ -67,16 +64,16 @@ class TitleScreen(states.GuiState):
 	if key == K_q and pressed:
 	    pygame.quit()
         elif(pressed and key == K_2):
-            playing = versus.VersusGameState(self._driver,self.screen)
-            self._driver.replace(playing)
-        elif(pressed and key == K_1):
-            playing = campaign.GameState(self._driver,self.screen)
+            playing = modes.VersusGameState(self._driver,self.screen)
             self._driver.replace(playing)
         elif(pressed and key == K_3):
-            playing = demo.DemoGameState(self._driver,self.screen)
+            playing = modes.DemoGameState(self._driver,self.screen)
             self._driver.replace(playing)
-        elif(pressed and key == K_4):
-            playing = world1.World1GameState(self._driver,self.screen)
+        elif(pressed and key == K_1):
+            playing = modes.World1GameState(self._driver,self.screen)
+            self._driver.replace(playing)
+        elif(pressed and key == K_5):
+            playing = modes.TagGameState(self._driver,self.screen)
             self._driver.replace(playing)
     
 if __name__ == '__main__':

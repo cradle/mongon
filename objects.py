@@ -52,7 +52,7 @@ class Bullet(gui.Paintable, gui.Updateable):
     def collidesWithBall(self,ball,player):
         if(self.rect().colliderect(ball.rect())):
             self.dead = True
-            ball.dead = True
+            ball.hitByBullet(player)
             return True
 
     def collidesWithPaddle(self,player):
@@ -60,6 +60,7 @@ class Bullet(gui.Paintable, gui.Updateable):
 	    player.freeze()
             self.dead = True
             return True
+        
 
 class Laser(gui.Paintable, gui.Updateable):
     
@@ -127,7 +128,7 @@ class Ball(gui.Paintable, gui.Updateable):
                    [255,0,255],
                    [255,255,255]]
     
-    def __init__(self,loc,bounds,generation=0):
+    def __init__(self,loc,bounds,generation=0,direction=None):
         """The 'bounds' parameter indicates the width and height
         of the playing area"""
         gui.Paintable.__init__(self,loc)
@@ -146,6 +147,9 @@ class Ball(gui.Paintable, gui.Updateable):
         self.dead = False
         self.loc = list(loc)
         self.dx, self.dy = [random.random()*2.0-1.0,random.random()*1.5-0.75]
+        if direction != None:
+            self.dx, self.dy = direction
+            
         self.childrenDirections = [self._vecNormalise([random.random()*2.0-1.0,random.random()*1.5-0.75]),
                                    self._vecNormalise([random.random()*2.0-1.0,random.random()*1.5-0.75])]
 
@@ -156,18 +160,14 @@ class Ball(gui.Paintable, gui.Updateable):
         self.damage = (self.maxGenerations() - generation + 3) ** 2
 
     def makeChildren(self):
-        children = [Ball(self.loc, (640,480), self.generation+1),
-                    Ball(self.loc, (640,480), self.generation+1)]
-        print self.childrenDirections
-        children[0].dx = self.childrenDirections[0][0]
-        children[0].dy = self.childrenDirections[0][1]
-        children[1].dx = self.childrenDirections[1][0]
-        children[1].dy = self.childrenDirections[1][1]
-        print ((children[0].dx,children[0].dy),(children[1].dx,children[1].dy))
-        return children
-
+        return [Ball(self.loc, (640,480), self.generation+1, self.childrenDirections[0]),
+                Ball(self.loc, (640,480), self.generation+1, self.childrenDirections[1])]
+    
     def maxGenerations(self):
         return len(self.colours)-1
+
+    def hitByBullet(self, player):
+        self.dead = True
 
     def normalise(self):
         vel = self._vecNormalise((self.dx, self.dy))
@@ -201,8 +201,13 @@ class Ball(gui.Paintable, gui.Updateable):
             normalBetween = self._vecNormalise(normalBetween)
             
             ball.reboundWithNormal(normalBetween)
+            ball.hitByBall(self)
+            self.hitByBall(ball)
             return True
         return False
+
+    def hitByBall(self, ball):
+        pass
 
     def reboundWithNormal(self, norm):    
         vel = [self.dx, self.dy]
@@ -240,7 +245,7 @@ class Ball(gui.Paintable, gui.Updateable):
 	pygame.draw.circle(screen, self.colour, self.loc,
                            self.radius, 1)
         for direction in self.childrenDirections:
-            pygame.draw.line(screen, (255,255,255),self.loc,
+            pygame.draw.aaline(screen, (255,255,255),self.loc,
                              [self.loc[0] + direction[0]*self.radius,
                               self.loc[1] + direction[1]*self.radius])
 	return
@@ -287,6 +292,27 @@ class Ball(gui.Paintable, gui.Updateable):
             
         self.loc[0] = newX
         self.loc[1] = newY
+
+class TagBall(Ball):
+    def __init__(self,loc,bounds,generation=0,direction=None,owner=None):
+        Ball.__init__(self,loc,bounds,generation,direction)
+        self.owner = owner
+        self.colour = owner.colour if owner else (128,128,128)
+        self.maxLifeTime = (self.maxGenerations() - generation + 1) * (1+random.random())
+        self.lifeTiem = self.maxLifeTime
+
+    def makeChildren(self):
+        return [TagBall(self.loc, (640,480), self.generation+1, self.childrenDirections[0],self.owner),
+                TagBall(self.loc, (640,480), self.generation+1, self.childrenDirections[1],self.owner)]
+        
+    def hitByBullet(self, player):
+        self.owner = player
+        self.colour = player.colour
+
+    def hitByBall(self, ball):
+        if ball.generation < self.generation:
+            self.owner = ball.owner
+            self.colour = ball.colour
         
 class TrailBall(Ball):
     def __init__(self,loc,bounds,generation=0):
@@ -318,6 +344,7 @@ class Paddle(gui.Paintable, gui.Keyable, gui.Updateable):
 	self.upKey = keys[0] if keys else None
 	self.downKey = keys[1] if keys else None
 	self.shootKey = keys[2] if keys else None
+	self.colour = [255,0,0] if direction == 1 else [0,0,255]
 	self.frozenTime = 0
 	self.maxFrozenTime = 0.6
         self.size = size
@@ -325,9 +352,9 @@ class Paddle(gui.Paintable, gui.Keyable, gui.Updateable):
         self.dy = 0
         self.speed = speed
         self.center()
-        self.reloadTime = 5000
+        self.reloadTime = 1500
         self.maxEnergy = self.reloadTime
-        self.bulletEnergy = self.reloadTime / 5.0
+        self.bulletEnergy = self.reloadTime / 1.0
         self.exhausted = True
         self.energy = 0
         self.bullets = []
