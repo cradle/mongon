@@ -2,7 +2,7 @@ from states import *
 import gui
 import random
 import pygame
-import pong
+import mongon
 from pygame.constants import *
 from done import GameOver
 from objects import *
@@ -70,8 +70,7 @@ class VersusGameState(GuiState):
             ballNum += 1
 
             if ball.dead:
-                b1 = Ball(ball.loc, (640,480), ball.generation+1)
-                b2 = Ball(ball.loc, (640,480), ball.generation+1)
+                b1, b2 = ball.makeChildren()
                 self.balls.append(b1)
                 self.balls.append(b2)
                 self.add(b1)
@@ -100,5 +99,5 @@ class VersusGameState(GuiState):
     def keyEvent(self,key,unicode,pressed):
         GuiState.keyEvent(self,key,unicode,pressed)
 	if key == K_q:
-            goplay = pong.TitleScreen(self._driver,self.screen)
+            goplay = mongon.TitleScreen(self._driver,self.screen)
             self._driver.replace(goplay)

@@ -2,7 +2,7 @@ import pygame
 from pygame.constants import *
  
 from states import *
-import pong
+import mongon
  
 class GameOver(State):
     
@@ -57,5 +57,5 @@ class GameOver(State):
         
     def keyEvent(self,key,unicode,pressed):
         if(pressed and key == K_m):
-            goplay = pong.TitleScreen(self._driver,self.screen)
+            goplay = mongon.TitleScreen(self._driver,self.screen)
             self._driver.replace(goplay)

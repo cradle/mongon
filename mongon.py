@@ -6,6 +6,7 @@ from pygame.constants import *
 import versus
 import campaign
 import demo
+import world1
  
 def main():
     pygame.init()
@@ -69,10 +70,13 @@ class TitleScreen(states.GuiState):
             playing = versus.VersusGameState(self._driver,self.screen)
             self._driver.replace(playing)
         elif(pressed and key == K_1):
-            playing = campaign.CampaignGameState(self._driver,self.screen)
+            playing = campaign.GameState(self._driver,self.screen)
             self._driver.replace(playing)
         elif(pressed and key == K_3):
             playing = demo.DemoGameState(self._driver,self.screen)
+            self._driver.replace(playing)
+        elif(pressed and key == K_4):
+            playing = world1.World1GameState(self._driver,self.screen)
             self._driver.replace(playing)
     
 if __name__ == '__main__':

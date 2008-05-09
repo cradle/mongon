@@ -75,11 +75,16 @@ class Laser(gui.Paintable, gui.Updateable):
         self.clobberinTime = pygame.time.get_ticks() + random.randrange(10000,20000)
         
     def paint(self,screen):
-        if self.angry:
-            topLeftX = self.loc[0] - (self.width / 2)
-            topLeftY = 0
-            rect = [topLeftX,topLeftY, self.width, self.height]
-            pygame.draw.rect(screen, (255,0,0), rect, 1)
+        colour = None
+        if not self.angry:
+            colour = (128, 128, 128)
+        else:
+            colour = (255,0,0)
+        topLeftX = self.loc[0] - (self.width / 2)
+        topLeftY = 0
+        rect = [topLeftX,topLeftY, self.width, self.height]
+        pygame.draw.rect(screen, colour, rect, 1)
+            
         if self.counterImage:
             screen.blit(self.counterImage, self.loc)
 
@@ -130,19 +135,36 @@ class Ball(gui.Paintable, gui.Updateable):
             generation = self.maxGenerations()
 	self.colour = self.colours[generation]
         Ball.numBalls += 1
+        self.maxLifeTime = (self.maxGenerations() - generation + 1) * 4 * (1+random.random())
+        self.lifeTime = self.maxLifeTime
         self.ballNum = Ball.numBalls
         self.generation = generation
         self.bounds = bounds
         self.radius = (self.maxGenerations()-self.generation+2) ** 2
-        self.speed = 50 * (generation+1)
+        self.maxSpeed = 50 * (generation+1)
+        self.speed = self.maxSpeed
         self.dead = False
         self.loc = list(loc)
         self.dx, self.dy = [random.random()*2.0-1.0,random.random()*1.5-0.75]
+        self.childrenDirections = [self._vecNormalise([random.random()*2.0-1.0,random.random()*1.5-0.75]),
+                                   self._vecNormalise([random.random()*2.0-1.0,random.random()*1.5-0.75])]
+
         self.normalise()
 	self.trail = []
         self.outOfBounds = 0
         self.value = (generation + 1) ** 2
         self.damage = (self.maxGenerations() - generation + 3) ** 2
+
+    def makeChildren(self):
+        children = [Ball(self.loc, (640,480), self.generation+1),
+                    Ball(self.loc, (640,480), self.generation+1)]
+        print self.childrenDirections
+        children[0].dx = self.childrenDirections[0][0]
+        children[0].dy = self.childrenDirections[0][1]
+        children[1].dx = self.childrenDirections[1][0]
+        children[1].dy = self.childrenDirections[1][1]
+        print ((children[0].dx,children[0].dy),(children[1].dx,children[1].dy))
+        return children
 
     def maxGenerations(self):
         return len(self.colours)-1
@@ -154,7 +176,7 @@ class Ball(gui.Paintable, gui.Updateable):
 
     def _vecNormalise(self, vec):
         length = math.sqrt(sum([v**2 for v in vec]))
-        return tuple([a/length for a in vec])
+        return [a/length for a in vec]
 
     def collidesWithBall(self, ball):
         if ball == self:
@@ -179,7 +201,6 @@ class Ball(gui.Paintable, gui.Updateable):
             normalBetween = self._vecNormalise(normalBetween)
             
             ball.reboundWithNormal(normalBetween)
-
             return True
         return False
 
@@ -216,7 +237,12 @@ class Ball(gui.Paintable, gui.Updateable):
         #self.speed = self.speed + self.speed * self.increase;
         
     def paint(self,screen):
-	pygame.draw.circle(screen, self.colour, self.loc, self.radius, 1)
+	pygame.draw.circle(screen, self.colour, self.loc,
+                           self.radius, 1)
+        for direction in self.childrenDirections:
+            pygame.draw.line(screen, (255,255,255),self.loc,
+                             [self.loc[0] + direction[0]*self.radius,
+                              self.loc[1] + direction[1]*self.radius])
 	return
 	colour = self.colour
 	radius = self.radius
@@ -229,6 +255,18 @@ class Ball(gui.Paintable, gui.Updateable):
 		
 
     def update(self,delay):
+        self.lifeTime -= delay
+        if self.lifeTime <= 0:
+            self.dead = True
+            return
+        if self.lifeTime <= 2:
+            self.speed = self.maxSpeed * (self.lifeTime/2)
+            
+        for direction, amount in zip(self.childrenDirections, [1,-0.5]):
+            d = direction[:]
+            direction[0] = d[0]*math.cos(delay*amount) - d[1]*math.sin(delay*amount)
+            direction[1] = d[1]*math.cos(delay*amount) + d[0]*math.sin(delay*amount)
+        
         x,y = self.loc
         radius = self.radius
         toMove = delay * self.speed
@@ -281,7 +319,7 @@ class Paddle(gui.Paintable, gui.Keyable, gui.Updateable):
 	self.downKey = keys[1] if keys else None
 	self.shootKey = keys[2] if keys else None
 	self.frozenTime = 0
-	self.maxFrozenTime = 1
+	self.maxFrozenTime = 0.6
         self.size = size
         self.maxY = maxY
         self.dy = 0
@@ -294,6 +332,10 @@ class Paddle(gui.Paintable, gui.Keyable, gui.Updateable):
         self.energy = 0
         self.bullets = []
         self.direction = direction
+        self.gunEnabled = True
+
+    def disableGun(self):
+        self.gunEnabled = False
 
     def freeze(self):
 	self.frozenTime = self.maxFrozenTime
@@ -356,15 +398,16 @@ class Paddle(gui.Paintable, gui.Keyable, gui.Updateable):
 	
 	if self.frozen():
 	    return
-                
-        if self.energy < self.maxEnergy:
-            self.energy += int(delay * 1000)
 
-        if self.exhausted and self.energy >= self.maxEnergy:
-            self.exhausted = False
+        if self.gunEnabled:
+            if self.energy < self.maxEnergy:
+                self.energy += int(delay * 1000)
 
-        if self.energy > self.maxEnergy:
-            self.energy = self.maxEnergy
+            if self.exhausted and self.energy >= self.maxEnergy:
+                self.exhausted = False
+
+            if self.energy > self.maxEnergy:
+                self.energy = self.maxEnergy
 
         x,y = self.loc
         halfHeight = self.size[1]/2
@@ -379,16 +422,16 @@ class Paddle(gui.Paintable, gui.Keyable, gui.Updateable):
 
 
     def shoot(self):
-        if not self.exhausted:
-            self.energy -= self.bulletEnergy
-            self.bullets.append(Bullet(self.loc, self.direction))
+        if self.gunEnabled:
+            if not self.exhausted:
+                self.energy -= self.bulletEnergy
+                self.bullets.append(Bullet(self.loc, self.direction))
 
-        if self.energy <= 0:
-            self.exhausted = True
-            self.energy = 0
+            if self.energy <= 0:
+                self.exhausted = True
+                self.energy = 0
     
     def keyEvent(self,key,unicode, pressed):
-        print key, self.keys
         if key not in self.keys:
             return
         
@@ -408,7 +451,6 @@ class Paddle(gui.Paintable, gui.Keyable, gui.Updateable):
             self.shoot()
 
     def frozen(self):
-	print self.frozenTime > 0
 	return self.frozenTime > 0
             
     def paint(self,screen):
@@ -430,11 +472,11 @@ class Paddle(gui.Paintable, gui.Keyable, gui.Updateable):
 	    rect[3] = math.floor(rect[3])
 	    pygame.draw.rect(screen, (128,0,0), rect)
 	    
-
-        topLeftX = self.guiLoc[0]
-        topLeftY = self.guiLoc[1]
-        rect = [topLeftX,topLeftY, self.energy/float(self.maxEnergy)*100, 10]
-        pygame.draw.rect(screen, (255,0,0) if self.exhausted else (0,0,255), rect, 1)
+        if self.gunEnabled:
+            topLeftX = self.guiLoc[0]
+            topLeftY = self.guiLoc[1]
+            rect = [topLeftX,topLeftY, self.energy/float(self.maxEnergy)*100, 10]
+            pygame.draw.rect(screen, (255,0,0) if self.exhausted else (0,0,255), rect, 1)
 
 class MousePaddle(Paddle, gui.Mouseable):
     
