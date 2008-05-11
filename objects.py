@@ -157,7 +157,7 @@ class Ball(gui.Paintable, gui.Updateable):
 	self.trail = []
         self.outOfBounds = 0
         self.value = (generation + 1) ** 2
-        self.damage = (self.maxGenerations() - generation + 3) ** 2
+        self.damage = (self.maxGenerations() - generation + 1) ** 2
 
     def makeChildren(self):
         return [Ball(self.loc, (640,480), self.generation+1, self.childrenDirections[0]),
@@ -245,7 +245,7 @@ class Ball(gui.Paintable, gui.Updateable):
 	pygame.draw.circle(screen, self.colour, self.loc,
                            self.radius, 1)
         for direction in self.childrenDirections:
-            pygame.draw.aaline(screen, (255,255,255),self.loc,
+            pygame.draw.line(screen, (255,255,255),self.loc,
                              [self.loc[0] + direction[0]*self.radius,
                               self.loc[1] + direction[1]*self.radius])
 	return

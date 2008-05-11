@@ -2,6 +2,22 @@ import campaign
 import mongon
 import done
 from objects import *
+
+class CoopState(campaign.GameState):
+    def __init__(self,driver,screen,level=0):
+	campaign.GameState.__init__(self,driver,screen,level)
+	self._player3 = self._initPlayer3()
+	self.add(self._player3)
+
+    def _initPlayer2(self):
+        return Paddle( (35,0), (15,75), 480, (K_UP, K_DOWN, K_LEFT), (10,0),1)
+    def _initPlayer3(self):
+        return Paddle( (10,0), (15,75), 480,(K_w, K_s, K_LSHIFT),(10,0),1 )
+    def _initPlayer1(self):
+        return BiffPaddle( (630,0), (15,75), 480, self.balls, (460,0), -1, 200)
+
+    def _backgroundText(self):
+	return "COOP"
 	
 class TagGameState(campaign.GameState):
     def _initBalls(self):
@@ -30,6 +46,7 @@ class World1GameState(campaign.GameState):
 
     def _initPlayer2(self):
         ai = BiffPaddle( (630,0), (15,75), 480, self.balls, (460,0), -1, 200)
+	ai.speed = 50 + 50 * self.level
         ai.disableGun()
         return ai
 	

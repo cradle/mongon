@@ -114,9 +114,9 @@ class GameState(GuiState):
 
     def _noBallsLeft(self):
         if self.score1.getScore() > self.score2.getScore(): 
-            nextLevel = GameState(self._driver,self.screen,self.level+1)
+            nextLevel = self.__class__(self._driver,self.screen,self.level+1)
         elif self.level > 0:
-            nextLevel = GameState(self._driver,self.screen,self.level-1)
+            nextLevel = self.__class__(self._driver,self.screen,self.level-1)
         else:
             nextLevel = done.GameOver(self._driver,self.screen, self.score1,self.score2)
             pygame.event.set_grab(False)

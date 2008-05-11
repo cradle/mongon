@@ -67,7 +67,7 @@ class TitleScreen(states.GuiState):
             playing = modes.VersusGameState(self._driver,self.screen)
             self._driver.replace(playing)
         elif(pressed and key == K_3):
-            playing = modes.DemoGameState(self._driver,self.screen)
+            playing = modes.CoopState(self._driver,self.screen)
             self._driver.replace(playing)
         elif(pressed and key == K_1):
             playing = modes.World1GameState(self._driver,self.screen)
