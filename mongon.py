@@ -28,7 +28,7 @@ class TitleScreen(states.GuiState):
         states.GuiState.update(self,delay)
         self.timeUntilStartDemo -= delay
         if self.timeUntilStartDemo < 0:
-            playing = demo.DemoGameState(self._driver,self.screen)
+            playing = modes.DemoGameState(self._driver,self.screen)
             self._driver.replace(playing)
                 
     def paint(self,screen):

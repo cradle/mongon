@@ -24,13 +24,13 @@ class GameState(GuiState):
         self.player1 = self._initPlayer1()
         self.player1.center()
         self.add(self.player1)
-        self.score1 = Score((20,5))
-        self.add(self.score1)
+        self.player1.score = Score((20,5))
+        self.add(self.player1.score)
         self.player2 = self._initPlayer2()
         self.player2.center()
         self.add(self.player2)
-        self.score2 = Score((600,5))
-        self.add(self.score2)
+        self.player2.score= Score((600,5))
+        self.add(self.player2.score)
         self.laser = self._initLaser()
         if self.laser:
             self.add(self.laser)
@@ -60,7 +60,7 @@ class GameState(GuiState):
 
             for ball in self.balls[:]:
                 if bullet.collidesWithBall(ball,self.player1):
-                    self.score1.setScore(self.score1.getScore() + ball.value)
+                    self.player1.addScore(ball.value)
 
             if bullet.dead:
                 self.player1.bullets.remove(bullet)
@@ -70,7 +70,7 @@ class GameState(GuiState):
 
             for ball in self.balls[:]:
                 if bullet.collidesWithBall(ball,self.player2):
-                    self.score2.setScore(self.score2.getScore() + ball.value)
+                    self.player2.addScore(ball.value)
 
             if bullet.dead:
                 self.player2.bullets.remove(bullet)
@@ -94,16 +94,12 @@ class GameState(GuiState):
                 self.add(b1)
                 self.add(b2)
         
-            score = 0
             if(ball.outOfBounds < 0):
-                score = self.score2.getScore() + ball.damage
-                self.score2.setScore(score)
-            elif(ball.outOfBounds > 0):
-                score = self.score1.getScore() + ball.damage
-                self.score1.setScore(score)
-                
-            if(score):
+                self.player2.addScore(ball.damage)
                 ball.dead = True
+            elif(ball.outOfBounds > 0):
+                ball.dead = True
+                self.player1.addScore(ball.damage)
 
             if ball.dead:
                 self.remove(ball)
@@ -113,12 +109,13 @@ class GameState(GuiState):
             self._noBallsLeft()
 
     def _noBallsLeft(self):
-        if self.score1.getScore() > self.score2.getScore(): 
+        if self.player1.score > self.player2.score: 
             nextLevel = self.__class__(self._driver,self.screen,self.level+1)
         elif self.level > 0:
             nextLevel = self.__class__(self._driver,self.screen,self.level-1)
         else:
-            nextLevel = done.GameOver(self._driver,self.screen, self.score1,self.score2)
+            nextLevel = done.GameOver(self._driver,self.screen,
+                    self.player1.score,self.player2.score)
             pygame.event.set_grab(False)
             pygame.mouse.set_visible(True)
         self._driver.replace(nextLevel)
@@ -138,6 +135,7 @@ class GameState(GuiState):
         GuiState.paint(self,screen)
     
     def keyEvent(self, key, unicode, value):
-	if key == K_q:
-		title = mongon.TitleScreen(self._driver, self.screen)
-		self._driver.replace(title)
+        GuiState.keyEvent(self, key, unicode, value)
+        if key == K_q:
+            title = mongon.TitleScreen(self._driver, self.screen)
+            self._driver.replace(title)

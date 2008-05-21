@@ -51,9 +51,10 @@ class Keyable:
         self.keys = keys
         
     def maskEvent(self, key, unicode, pressed):
-        if self.keys:
-                if not (key in self.keys):
-                    return
+        print "Mask Event", self.keys, key, self.__class__
+        #if self.keys:
+        #    if not key in self.keys:
+        #        return
         self.keyEvent(key,unicode,pressed)
         
     def keyEvent(self,key,unicode, pressed):

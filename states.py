@@ -8,8 +8,8 @@ class StateDriver:
     def __init__(self,screen):
         self._states = []
         self._screen = screen
-	self._tempScreen = self._screen.copy()
-	self._oldScreens = [screen] * 5
+        self._tempScreen = self._screen.copy()
+        self._oldScreens = [screen] * 5
  
     def done(self):
         self._states.pop()
@@ -137,17 +137,14 @@ class GuiState(State):
             paintable.paint(screen)
             
     def keyEvent(self,key,unicode,pressed):
+        print "KeyEvent"
         for keyable in self.keyables:
             keyable.keyEvent(key,unicode,pressed)
             
     def mouseEvent(self,event):
         x,y = event.pos
         for mouseable in self.mouseables:
-            #x1,y1 = mouseable.loc[0:2]
-	    #w,h = self.screen.get_width(),self.screen.get_height()
-            #if ( x >= x1   and y >= y1 and
-            #     x <  x1+w and y <  y1+h):
-	    mouseable.mouseEvent(event)
+            mouseable.mouseEvent(event)
                 
     def update(self,delay):
         for updateable in self.updateables:

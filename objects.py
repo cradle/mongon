@@ -11,11 +11,19 @@ class Score(gui.Paintable):
         gui.Paintable.__init__(self,loc)
         self.scoreFont = pygame.font.Font(None, 36)
         self.setScore(0)
+
+    def __cmp__(self, other):
+        return cmp(self.score, other)
         
     def setScore(self,score):
         self.score = score
         white = (255,255,255)
-        self.scoreImage = self.scoreFont.render(str(score),0,white)
+        self.scoreImage = self.scoreFont.render(str(self.score),0,white)
+
+    def addScore(self,score):
+        self.score += score
+        white = (255,255,255)
+        self.scoreImage = self.scoreFont.render(str(self.score),0,white)
         
     def getScore(self):
         return self.score
@@ -31,7 +39,7 @@ class Bullet(gui.Paintable, gui.Updateable):
         self.height = height
         self.width = width
         self.dead = False
-        self.dx = 400 * self.direction
+        self.dx = 500 * self.direction
         self.loc = (loc[0] + self.width * self.direction + 5, loc[1])
         
     def paint(self,screen):
@@ -248,6 +256,7 @@ class Ball(gui.Paintable, gui.Updateable):
             pygame.draw.line(screen, (255,255,255),self.loc,
                              [self.loc[0] + direction[0]*self.radius,
                               self.loc[1] + direction[1]*self.radius])
+                        
 	return
 	colour = self.colour
 	radius = self.radius
@@ -301,6 +310,11 @@ class TagBall(Ball):
         self.maxLifeTime = (self.maxGenerations() - generation + 1) * (1+random.random())
         self.lifeTiem = self.maxLifeTime
 
+    def update(self,delay):
+        Ball.update(self, delay)
+        if self.owner:
+            self.owner.addScore((self.generation+1)*delay)
+
     def makeChildren(self):
         return [TagBall(self.loc, (640,480), self.generation+1, self.childrenDirections[0],self.owner),
                 TagBall(self.loc, (640,480), self.generation+1, self.childrenDirections[1],self.owner)]
@@ -341,31 +355,34 @@ class Paddle(gui.Paintable, gui.Keyable, gui.Updateable):
         gui.Paintable.__init__(self,loc)
         self.guiLoc = guiLoc
         self.keys = keys
-	self.upKey = keys[0] if keys else None
-	self.downKey = keys[1] if keys else None
-	self.shootKey = keys[2] if keys else None
-	self.colour = [255,0,0] if direction == 1 else [0,0,255]
-	self.frozenTime = 0
-	self.maxFrozenTime = 0.6
+        self.upKey = keys[0] if keys else None
+        self.downKey = keys[1] if keys else None
+        self.shootKey = keys[2] if keys else None
+        self.colour = [255,0,0] if direction == 1 else [0,0,255]
+        self.frozenTime = 0
+        self.maxFrozenTime = 0.6
         self.size = size
         self.maxY = maxY
         self.dy = 0
         self.speed = speed
         self.center()
-        self.reloadTime = 1500
+        self.reloadTime = 1000
         self.maxEnergy = self.reloadTime
-        self.bulletEnergy = self.reloadTime / 1.0
+        self.bulletEnergy = self.reloadTime / 2.0
         self.exhausted = True
         self.energy = 0
         self.bullets = []
         self.direction = direction
         self.gunEnabled = True
 
+    def addScore(self, score):
+        self.score.addScore(score)
+
     def disableGun(self):
         self.gunEnabled = False
 
     def freeze(self):
-	self.frozenTime = self.maxFrozenTime
+        self.frozenTime = self.maxFrozenTime
         
     def center(self):
         y = self.maxY / 2 - self.size[1] / 2

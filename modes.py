@@ -82,10 +82,10 @@ class VersusGameState(campaign.GameState):
         return Paddle( (10,0), (15,75), 480,(K_w, K_s, K_LSHIFT),(10,0),1 )
 
     def _initPlayer2(self):
-        return Paddle( (630,0), (15,75), 480, (K_UP, K_DOWN, K_LEFT), (380,0),-1)
+        return Paddle( (630,0), (15,75), 480,(K_UP, K_DOWN, K_LEFT), (380,0),-1)
 
     def _noBallsLeft(self):
-        done = done.GameOver(self._driver,self.screen,
-                        self.score1,self.score2)
-        self._driver.replace(done)
+        godone = done.GameOver(self._driver,self.screen,
+                        self.player1.score,self.player2.score)
+        self._driver.replace(godone)
 
